@@ -1,0 +1,21 @@
+{
+  "name": "lifemesh-ecosystem",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "lifemesh-mobile",
+    "lifemesh-backend", 
+    "lifemesh-shared"
+  ],
+  "scripts": {
+    "mobile": "cd lifemesh-mobile && npm start",
+    "backend": "cd lifemesh-backend && npm run dev",
+    "backend:db": "cd lifemesh-backend && npx prisma studio",
+    "install:all": "npm install && npm install --workspaces",
+    "clean": "rm -rf node_modules && rm -rf */node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

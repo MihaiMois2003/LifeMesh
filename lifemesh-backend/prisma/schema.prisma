@@ -1,0 +1,203 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  username    String   @unique
+  displayName String?
+  bio         String?  @db.Text
+  avatar      String?
+  
+  // Reputation system
+  reputation  Int      @default(0)
+  level       Int      @default(1)
+  
+  // Location
+  latitude    Float?
+  longitude   Float?
+  address     String?
+  
+  // Auth
+  password    String
+  isVerified  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastLoginAt DateTime?
+  
+  // Relations
+  posts       Post[]
+  comments    Comment[]
+  votes       Vote[]
+  badges      UserBadge[]
+  
+  @@map("users")
+}
+
+model Post {
+  id          String     @id @default(uuid())
+  title       String
+  content     String     @db.Text
+  
+  // Classification
+  category    Category   @default(GENERAL)
+  type        PostType   @default(TEXT)
+  status      PostStatus @default(ACTIVE)
+  
+  // Location
+  latitude    Float?
+  longitude   Float?
+  address     String?
+  radius      Int?       // For area-based posts (in meters)
+  
+  // Media
+  imageUrls   Json?      // Array of image URLs
+  
+  // Engagement
+  upvotes     Int        @default(0)
+  downvotes   Int        @default(0)
+  viewCount   Int        @default(0)
+  
+  // AI metadata
+  aiCategory  String?    // AI-suggested category
+  aiConfidence Float?    // AI confidence score
+  
+  // Timestamps
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  expiresAt   DateTime?  // For time-sensitive posts
+  
+  // Relations
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId    String
+  comments    Comment[]
+  votes       Vote[]
+  
+  // Indexes for performance
+  @@index([category, status, createdAt])
+  @@index([latitude, longitude])
+  @@index([authorId])
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  
+  // Engagement
+  upvotes   Int      @default(0)
+  downvotes Int      @default(0)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  
+  // Self-referencing for replies
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  parentId  String?
+  replies   Comment[] @relation("CommentReplies")
+  
+  @@index([postId, createdAt])
+  @@map("comments")
+}
+
+model Vote {
+  id       String   @id @default(uuid())
+  type     VoteType
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId   String
+  
+  // Prevent duplicate votes
+  @@unique([userId, postId])
+  @@map("votes")
+}
+
+model Badge {
+  id          String @id @default(uuid())
+  name        String @unique
+  description String @db.Text
+  icon        String
+  color       String
+  
+  // Requirements
+  requirement Json   // Flexible requirement system
+  
+  // Relations
+  users       UserBadge[]
+  
+  @@map("badges")
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  earnedAt  DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  badgeId   String
+  
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+// Enums
+enum Category {
+  HELP_REQUEST
+  DONATION
+  EVENT
+  ALERT
+  SOCIAL
+  MARKETPLACE
+  CIVIC
+  GENERAL
+}
+
+enum PostType {
+  TEXT
+  IMAGE
+  EVENT
+  HELP_REQUEST
+  DONATION_OFFER
+  LOST_AND_FOUND
+  ANNOUNCEMENT
+}
+
+enum PostStatus {
+  ACTIVE
+  RESOLVED
+  EXPIRED
+  HIDDEN
+  REPORTED
+}
+
+enum VoteType {
+  UPVOTE
+  DOWNVOTE
+}
