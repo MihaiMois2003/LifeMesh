@@ -11,6 +11,9 @@ datasource db {
 }
 
 model User {
+  //role of the user
+  role        UserRole  @default(USER)
+
   id          String   @id @default(uuid())
   email       String   @unique
   username    String   @unique
@@ -200,4 +203,9 @@ enum PostStatus {
 enum VoteType {
   UPVOTE
   DOWNVOTE
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }

@@ -1,23 +1,25 @@
 // This describes what a User looks like - MUST match your database exactly
+import { UserRole } from "@prisma/client";
 
 export interface User {
   id: string;
   email: string;
   username: string;
-  displayName: string | null; // Can be null (from database)
-  bio: string | null; // Can be null
-  avatar: string | null; // Can be null
+  displayName: string | null;
+  bio: string | null;
+  avatar: string | null;
+  role: UserRole; // Now TypeScript knows about this
   reputation: number;
   level: number;
-  latitude: number | null; // Can be null
-  longitude: number | null; // Can be null
-  address: string | null; // Can be null
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
   password: string;
   isVerified: boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
-  lastLoginAt: Date | null; // Can be null
+  lastLoginAt: Date | null;
 }
 
 // This describes the minimum data needed to CREATE a user
