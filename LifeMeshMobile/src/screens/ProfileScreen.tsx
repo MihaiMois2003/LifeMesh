@@ -1,13 +1,6 @@
 // src/screens/ProfileScreen.tsx
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  Dimensions,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,8 +32,6 @@ import { Card } from "../components/ui/Card";
 import { StatCard } from "../components/ui/StatCard";
 import { SettingsScreen } from "../components/profile/SettingsScreen";
 import { EditProfileModal } from "../components/profile/EditProfileModal";
-
-const { width } = Dimensions.get("window");
 
 export const ProfileScreen = () => {
   const { user, logout } = useAuth();
@@ -94,9 +85,7 @@ export const ProfileScreen = () => {
   };
 
   const handleSaveProfile = async (userData: any) => {
-    // Here you would call your API to update the user profile
     console.log("Saving profile data:", userData);
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
   };
 
@@ -221,7 +210,7 @@ export const ProfileScreen = () => {
         translucent
       />
 
-      {/* Full-height header with green background */}
+      {/* Compact Green Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
         <LinearGradient
           colors={[Colors.primary[500], Colors.primary[700]]}
@@ -231,65 +220,34 @@ export const ProfileScreen = () => {
           <View style={styles.circle1} />
           <View style={styles.circle2} />
 
-          {/* Settings button - moved much further right */}
+          {/* Settings button - positioned at far right */}
           <AnimatedPressable
             onPress={() => setShowSettings(true)}
-            style={styles.settingsButton}
+            style={[styles.settingsButton, { top: insets.top + 10 }]}
           >
             <Ionicons name="settings-outline" size={22} color={Colors.white} />
           </AnimatedPressable>
-
-          {/* Avatar positioned in center */}
-          <Animated.View style={[styles.avatarInHeader, avatarAnimatedStyle]}>
-            <PentagonAvatar
-              imageUri={avatarUri}
-              size={140}
-              onPress={handleImagePicker}
-            />
-          </Animated.View>
         </LinearGradient>
       </Animated.View>
 
-      {/* User info below avatar */}
-      <Animated.View style={[styles.userInfoSection, buttonsAnimatedStyle]}>
-        <Text style={styles.displayName}>
-          {user.displayName || user.username}
-        </Text>
-        <Text style={styles.username}>@{user.username}</Text>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <AnimatedPressable
-            onPress={() => setShowEditProfile(true)}
-            style={[styles.actionButton, styles.editButton]}
-          >
-            <Ionicons name="create-outline" size={18} color={Colors.white} />
-            <Text style={styles.buttonText}>Edit Profile</Text>
-          </AnimatedPressable>
-
-          <AnimatedPressable
-            onPress={handleShareProfile}
-            style={[styles.actionButton, styles.shareButton]}
-          >
-            <Ionicons
-              name="share-outline"
-              size={18}
-              color={Colors.primary[600]}
-            />
-            <Text style={[styles.buttonText, { color: Colors.primary[600] }]}>
-              Share
-            </Text>
-          </AnimatedPressable>
-        </View>
+      {/* Avatar - perfectly positioned between green and white */}
+      <Animated.View style={[styles.avatarContainer, avatarAnimatedStyle]}>
+        <PentagonAvatar
+          imageUri={avatarUri}
+          size={120}
+          onPress={handleImagePicker}
+        />
       </Animated.View>
 
-      {/* Content */}
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        <Animated.View style={contentAnimatedStyle}>
+      {/* White Content Section */}
+      <View style={styles.contentSection}>
+        {/* User Info */}
+        <Animated.View style={[styles.userInfo, buttonsAnimatedStyle]}>
+          <Text style={styles.displayName}>
+            {user.displayName || user.username}
+          </Text>
+          <Text style={styles.username}>@{user.username}</Text>
+
           {/* Location */}
           {user.address && (
             <View style={styles.locationContainer}>
@@ -302,59 +260,93 @@ export const ProfileScreen = () => {
             </View>
           )}
 
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            {stats.map((stat, index) => (
-              <StatCard
-                key={index}
-                label={stat.label}
-                value={stat.value}
-                icon={stat.icon}
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <AnimatedPressable
+              onPress={() => setShowEditProfile(true)}
+              style={[styles.actionButton, styles.editButton]}
+            >
+              <Ionicons name="create-outline" size={18} color={Colors.white} />
+              <Text style={styles.buttonText}>Edit Profile</Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              onPress={handleShareProfile}
+              style={[styles.actionButton, styles.shareButton]}
+            >
+              <Ionicons
+                name="share-outline"
+                size={18}
+                color={Colors.primary[600]}
               />
-            ))}
+              <Text style={[styles.buttonText, { color: Colors.primary[600] }]}>
+                Share
+              </Text>
+            </AnimatedPressable>
           </View>
+        </Animated.View>
 
-          {/* Bio */}
-          {user.bio && (
-            <Card style={styles.bioCard}>
-              <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.bioText}>{user.bio}</Text>
-            </Card>
-          )}
+        {/* Content */}
+        <ScrollView
+          style={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <Animated.View style={contentAnimatedStyle}>
+            {/* Stats */}
+            <View style={styles.statsContainer}>
+              {stats.map((stat, index) => (
+                <StatCard
+                  key={index}
+                  label={stat.label}
+                  value={stat.value}
+                  icon={stat.icon}
+                />
+              ))}
+            </View>
 
-          {/* Recent Activity */}
-          <Card style={styles.activityCard}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            {activities.map((activity, index) => (
-              <View key={index} style={styles.activityItem}>
-                <View style={styles.activityLeft}>
-                  <View
-                    style={[
-                      styles.activityDot,
-                      { backgroundColor: getActivityColor(activity.type) },
-                    ]}
-                  />
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityTitle}>{activity.title}</Text>
-                    <Text style={styles.activityTime}>{activity.time}</Text>
+            {/* Bio */}
+            {user.bio && (
+              <Card style={styles.bioCard}>
+                <Text style={styles.sectionTitle}>About</Text>
+                <Text style={styles.bioText}>{user.bio}</Text>
+              </Card>
+            )}
+
+            {/* Recent Activity */}
+            <Card style={styles.activityCard}>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              {activities.map((activity, index) => (
+                <View key={index} style={styles.activityItem}>
+                  <View style={styles.activityLeft}>
+                    <View
+                      style={[
+                        styles.activityDot,
+                        { backgroundColor: getActivityColor(activity.type) },
+                      ]}
+                    />
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityTitle}>{activity.title}</Text>
+                      <Text style={styles.activityTime}>{activity.time}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
-          </Card>
+              ))}
+            </Card>
 
-          {/* Member Since */}
-          <Card style={styles.joinCard}>
-            <Text style={styles.joinTitle}>Member Since</Text>
-            <Text style={styles.joinDate}>
-              {new Date(user.createdAt).toLocaleDateString("en-US", {
-                month: "long",
-                year: "numeric",
-              })}
-            </Text>
-          </Card>
-        </Animated.View>
-      </ScrollView>
+            {/* Member Since */}
+            <Card style={styles.joinCard}>
+              <Text style={styles.joinTitle}>Member Since</Text>
+              <Text style={styles.joinDate}>
+                {new Date(user.createdAt).toLocaleDateString("en-US", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </Text>
+            </Card>
+          </Animated.View>
+        </ScrollView>
+      </View>
 
       {/* Modals */}
       <SettingsScreen
@@ -379,21 +371,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.secondary,
   },
 
-  // Header (full height with green background to status bar)
+  // Compact Green Header
   header: {
-    height: 200,
+    height: 120, // Much smaller
     overflow: "hidden",
   },
   headerGradient: {
     flex: 1,
-    paddingTop: insets.top + Spacing.md, // Account for status bar
     position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
   },
   circle1: {
     position: "absolute",
-    top: 20,
+    top: -20,
     right: -30,
     width: 80,
     height: 80,
@@ -411,8 +400,7 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     position: "absolute",
-    top: insets.top + Spacing.md,
-    right: Spacing.md, // Much closer to the edge
+    right: 16, // Far right position
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -420,21 +408,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarInHeader: {
-    marginTop: Spacing.lg,
+
+  // Avatar - positioned between sections
+  avatarContainer: {
+    position: "absolute",
+    top: 60, // Half of header height (120/2)
+    alignSelf: "center",
+    zIndex: 10,
   },
 
-  // User info section (below avatar)
-  userInfoSection: {
-    alignItems: "center",
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
+  // White Content Section
+  contentSection: {
+    flex: 1,
     backgroundColor: Colors.white,
-    marginTop: -20,
+    marginTop: 60, // Same as avatar top position
     borderTopLeftRadius: BorderRadius["2xl"],
     borderTopRightRadius: BorderRadius["2xl"],
+    paddingTop: 80, // Space for avatar (60 + 20 padding)
     ...Shadows.lg,
+  },
+
+  // User Info
+  userInfo: {
+    alignItems: "center",
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xl,
   },
   displayName: {
     fontSize: Typography.fontSizes.xl,
@@ -445,13 +443,26 @@ const styles = StyleSheet.create({
   username: {
     fontSize: Typography.fontSizes.sm,
     color: Colors.text.secondary,
+    marginBottom: Spacing.md,
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.lg,
+    backgroundColor: Colors.primary[50],
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+  },
+  locationText: {
+    fontSize: Typography.fontSizes.sm,
+    color: Colors.text.secondary,
+    marginLeft: Spacing.xs,
   },
 
   // Action Buttons
   actionButtons: {
     flexDirection: "row",
-    justifyContent: "center",
     gap: Spacing.md,
   },
   actionButton: {
@@ -479,27 +490,10 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.xs,
   },
 
-  // Content
-  content: {
+  // Scrollable Content
+  scrollContent: {
     flex: 1,
     paddingHorizontal: Spacing.xl,
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.lg,
-    backgroundColor: Colors.white,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.xl,
-    alignSelf: "center",
-    ...Shadows.sm,
-  },
-  locationText: {
-    fontSize: Typography.fontSizes.sm,
-    color: Colors.text.secondary,
-    marginLeft: Spacing.xs,
   },
 
   // Stats

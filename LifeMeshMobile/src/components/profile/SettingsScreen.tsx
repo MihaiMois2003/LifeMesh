@@ -172,7 +172,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
         {/* Content */}
         <ScrollView
-          style={styles.content}
+          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
@@ -279,11 +279,19 @@ const styles = StyleSheet.create({
   },
 
   // Content
-  content: {
+  contentWrapper: {
+    flex: 1, // Take remaining space after header
+  },
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Spacing["3xl"], // Extra padding for scrolling
   },
   groupContainer: {
     marginBottom: Spacing.xl,
+    paddingBottom: Spacing.md, // Add padding for better scrolling
   },
   groupTitle: {
     fontSize: Typography.fontSizes.lg,

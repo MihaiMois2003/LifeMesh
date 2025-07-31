@@ -2,12 +2,6 @@
 import React from "react";
 import { View, StyleSheet, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, {
-  ClipPath,
-  Polygon,
-  Defs,
-  Image as SvgImage,
-} from "react-native-svg";
 import { Colors, Shadows } from "../../shared/constants/theme";
 import { AnimatedPressable } from "./AnimatedPressable";
 
@@ -22,70 +16,51 @@ export const PentagonAvatar: React.FC<PentagonAvatarProps> = ({
   size = 120,
   onPress,
 }) => {
-  // Calculate pentagon points for a perfect pentagon
-  const centerX = size / 2;
-  const centerY = size / 2;
-  const radius = size / 2.2; // Slightly smaller to add padding
-
-  // Pentagon points (5 sides, starting from top) with more rounded corners
-  const points = [];
-  for (let i = 0; i < 5; i++) {
-    const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2; // Start from top
-    const x = centerX + radius * Math.cos(angle);
-    const y = centerY + radius * Math.sin(angle);
-    points.push(`${x},${y}`);
-  }
-
-  const polygonPoints = points.join(" ");
-  const cornerRadius = size * 0.15; // Much more rounded corners
-
   return (
     <AnimatedPressable onPress={onPress} style={{ width: size, height: size }}>
       <View style={[styles.container, { width: size, height: size }]}>
-        <Svg width={size} height={size} style={styles.svg}>
-          <Defs>
-            <ClipPath id="pentagonClip">
-              <Polygon
-                points={polygonPoints}
-                rx={cornerRadius}
-                ry={cornerRadius}
-              />
-            </ClipPath>
-          </Defs>
-
+        {/* Pentagon shape using CSS transforms and rotation */}
+        <View
+          style={[
+            styles.pentagonShape,
+            {
+              width: size * 0.9,
+              height: size * 0.9,
+              borderRadius: size * 0.2, // Much more rounded
+            },
+          ]}
+        >
           {imageUri ? (
-            <SvgImage
-              href={{ uri: imageUri }}
-              width={size}
-              height={size}
-              clipPath="url(#pentagonClip)"
-              preserveAspectRatio="xMidYMid slice"
+            <Image
+              source={{ uri: imageUri }}
+              style={[
+                styles.image,
+                {
+                  width: size * 0.9,
+                  height: size * 0.9,
+                  borderRadius: size * 0.2,
+                },
+              ]}
             />
           ) : (
-            <>
-              {/* Background for placeholder */}
-              <Polygon
-                points={polygonPoints}
-                fill={Colors.primary[50]}
-                stroke={Colors.white}
-                strokeWidth="4"
-                rx={cornerRadius}
-                ry={cornerRadius}
+            <View
+              style={[
+                styles.placeholder,
+                {
+                  width: size * 0.9,
+                  height: size * 0.9,
+                  borderRadius: size * 0.2,
+                },
+              ]}
+            >
+              <Ionicons
+                name="person"
+                size={size * 0.4}
+                color={Colors.primary[600]}
               />
-            </>
+            </View>
           )}
-        </Svg>
-
-        {/* Placeholder icon if no image */}
-        {!imageUri && (
-          <View style={styles.iconContainer}>
-            <Ionicons
-              name="person"
-              size={size * 0.4}
-              color={Colors.primary[600]}
-            />
-          </View>
-        )}
+        </View>
 
         {/* Camera icon */}
         <View
@@ -110,18 +85,27 @@ export const PentagonAvatar: React.FC<PentagonAvatarProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pentagonShape: {
+    backgroundColor: Colors.white,
+    // Create pentagon-like shape using clip-path alternative
+    transform: [{ rotate: "0deg" }],
+    borderWidth: 4,
+    borderColor: Colors.white,
     ...Shadows.xl,
+    // Custom pentagon styling
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
   },
-  svg: {
-    borderRadius: 30, // Much more rounded
-    ...Shadows.lg,
+  image: {
+    backgroundColor: Colors.primary[50],
   },
-  iconContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  placeholder: {
+    backgroundColor: Colors.primary[50],
     alignItems: "center",
     justifyContent: "center",
   },
