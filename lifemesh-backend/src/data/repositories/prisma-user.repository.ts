@@ -1,12 +1,11 @@
-// This is our actual "User Librarian" that knows how to work with Prisma/MySQL
-
+// data/repositories/prisma-user.repository.ts
 import { PrismaClient, UserRole } from "@prisma/client";
 import { UserRepository } from "../../core/interfaces/user-repository.interface";
 import { User, CreateUserData } from "../../core/entities/user.entity";
 import {
   UpdateUserData,
   FindManyOptions,
-} from "../../core/entities/user-types"; // Import new types
+} from "../../core/entities/user-types";
 import bcrypt from "bcryptjs";
 
 export class PrismaUserRepository implements UserRepository {
@@ -65,6 +64,17 @@ export class PrismaUserRepository implements UserRepository {
     await this.prisma.user.update({
       where: { id },
       data: { role },
+    });
+  }
+
+  // 🆕 NEW: Avatar-specific update method
+  async updateAvatar(userId: string, avatarUrl: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        avatar: avatarUrl,
+        updatedAt: new Date(), // Explicitly update the timestamp
+      },
     });
   }
 

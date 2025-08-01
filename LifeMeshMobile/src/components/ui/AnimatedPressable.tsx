@@ -5,6 +5,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  EntryAnimationsValues,
+  AnimatedProps,
 } from "react-native-reanimated";
 
 interface AnimatedPressableProps {
@@ -12,6 +14,7 @@ interface AnimatedPressableProps {
   onPress?: () => void;
   style?: any;
   scaleValue?: number;
+  entering?: any; // Add this line
 }
 
 export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
@@ -19,6 +22,7 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
   onPress,
   style,
   scaleValue = 0.95,
+  entering, // Add this parameter
 }) => {
   const scale = useSharedValue(1);
 
@@ -40,7 +44,12 @@ export const AnimatedPressable: React.FC<AnimatedPressableProps> = ({
       onPressOut={handlePressOut}
       onPress={onPress}
     >
-      <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>
+      <Animated.View
+        style={[animatedStyle, style]}
+        entering={entering} // Add this line
+      >
+        {children}
+      </Animated.View>
     </Pressable>
   );
 };

@@ -1,7 +1,6 @@
-// This describes what our "User Librarian" can do
-
+// core/interfaces/user-repository.interface.ts
 import { User, CreateUserData } from "../entities/user.entity";
-import { UpdateUserData, FindManyOptions } from "../entities/user-types"; // Import the new types
+import { UpdateUserData, FindManyOptions } from "../entities/user-types";
 import { UserRole } from "@prisma/client";
 
 export interface UserRepository {
@@ -18,9 +17,12 @@ export interface UserRepository {
   update(id: string, userData: UpdateUserData): Promise<User>;
   updateRole(id: string, role: UserRole): Promise<void>;
 
+  // 🆕 NEW: Avatar-specific update method
+  updateAvatar(userId: string, avatarUrl: string): Promise<User>;
+
   // Delete operations
   delete(id: string): Promise<void>;
-  softDelete(id: string): Promise<void>; // Mark as inactive instead of deleting
+  softDelete(id: string): Promise<void>;
 
   // Enhanced read operations
   findMany(options?: FindManyOptions): Promise<User[]>;

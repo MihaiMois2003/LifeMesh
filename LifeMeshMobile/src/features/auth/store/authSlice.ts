@@ -81,12 +81,25 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+
+    updateUser: (state, action: PayloadAction<any>) => {
+      // Only update if user is logged in
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
   },
 });
 
 // Export actions
-export const { loginStart, loginSuccess, loginFailure, logout, clearError } =
-  authSlice.actions;
+export const {
+  loginStart,
+  loginSuccess,
+  loginFailure,
+  logout,
+  clearError,
+  updateUser,
+} = authSlice.actions;
 
 // Export reducer
 export default authSlice.reducer;

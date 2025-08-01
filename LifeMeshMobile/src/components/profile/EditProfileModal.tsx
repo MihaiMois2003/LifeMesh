@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -18,8 +17,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  interpolate,
-  Extrapolate,
+  FadeIn,
+  SlideInRight,
 } from "react-native-reanimated";
 
 import {
@@ -32,8 +31,6 @@ import {
 import { AnimatedPressable } from "../ui/AnimatedPressable";
 import { AnimatedInput } from "../ui/AnimatedInput";
 import { AnimatedButton } from "../ui/AnimatedButton";
-
-const { width, height } = Dimensions.get("window");
 
 interface User {
   id: string;
@@ -67,15 +64,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   // Animation values
   const slideAnimation = useSharedValue(0);
-  const overlayAnimation = useSharedValue(0);
 
   useEffect(() => {
     if (isVisible) {
-      overlayAnimation.value = withTiming(1, { duration: 300 });
       slideAnimation.value = withSpring(1, { damping: 15 });
     } else {
       slideAnimation.value = withTiming(0, { duration: 300 });
-      overlayAnimation.value = withTiming(0, { duration: 300 });
     }
   }, [isVisible]);
 
@@ -86,21 +80,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     setAddress(user.address || "");
   }, [user]);
 
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayAnimation.value,
-    pointerEvents: isVisible ? "auto" : "none",
-  }));
-
   const slideStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(
-      slideAnimation.value,
-      [0, 1],
-      [height, 0],
-      Extrapolate.CLAMP
-    );
-
     return {
-      transform: [{ translateY }],
+      transform: [
+        {
+          translateX: slideAnimation.value === 1 ? 0 : 1000,
+        },
+      ],
     };
   });
 
@@ -132,8 +118,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   if (!isVisible) return null;
 
   return (
-    <Animated.View style={[styles.overlay, overlayStyle]}>
-      <StatusBar style="dark" backgroundColor="rgba(0,0,0,0.5)" />
+    <View style={styles.fullScreenOverlay}>
+      <StatusBar style="dark" backgroundColor={Colors.background.primary} />
 
       <Animated.View style={[styles.container, slideStyle]}>
         <KeyboardAvoidingView
@@ -145,7 +131,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}
           >
             <AnimatedPressable onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={Colors.text.primary} />
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={Colors.text.primary}
+              />
             </AnimatedPressable>
             <Text style={styles.title}>Edit Profile</Text>
             <View style={styles.placeholder} />
@@ -157,7 +147,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.form}>
+            <Animated.View entering={FadeIn.delay(200)} style={styles.form}>
               {/* Email (Read-only) */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.fieldLabel}>Email</Text>
@@ -185,41 +175,48 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </View>
 
               {/* Display Name */}
-              <AnimatedInput
-                label="Display Name"
-                value={displayName}
-                onChangeText={setDisplayName}
-                placeholder="Enter your display name"
-                icon="✨"
-                maxLength={50}
-              />
+              <Animated.View entering={SlideInRight.delay(300)}>
+                <AnimatedInput
+                  label="Display Name"
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  placeholder="Enter your display name"
+                  icon="✨"
+                  maxLength={50}
+                />
+              </Animated.View>
 
               {/* Bio */}
-              <AnimatedInput
-                label="Bio"
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Tell us about yourself..."
-                multiline
-                numberOfLines={4}
-                maxLength={200}
-                icon="📝"
-              />
+              <Animated.View entering={SlideInRight.delay(400)}>
+                <AnimatedInput
+                  label="Bio"
+                  value={bio}
+                  onChangeText={setBio}
+                  placeholder="Tell us about yourself..."
+                  multiline
+                  numberOfLines={4}
+                  maxLength={200}
+                  icon="📝"
+                />
+              </Animated.View>
 
               {/* Address */}
-              <AnimatedInput
-                label="Location"
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Enter your location"
-                icon="📍"
-                maxLength={100}
-              />
-            </View>
+              <Animated.View entering={SlideInRight.delay(500)}>
+                <AnimatedInput
+                  label="Location"
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Enter your location"
+                  icon="📍"
+                  maxLength={100}
+                />
+              </Animated.View>
+            </Animated.View>
           </ScrollView>
 
           {/* Footer */}
-          <View
+          <Animated.View
+            entering={FadeIn.delay(600)}
             style={[
               styles.footer,
               { paddingBottom: insets.bottom + Spacing.lg },
@@ -233,30 +230,26 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               icon="💾"
               style={styles.saveButton}
             />
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Animated.View>
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  fullScreenOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: Colors.background.primary,
     zIndex: 1000,
   },
   container: {
     flex: 1,
     backgroundColor: Colors.background.primary,
-    borderTopLeftRadius: BorderRadius["2xl"],
-    borderTopRightRadius: BorderRadius["2xl"],
-    marginTop: 50,
-    ...Shadows.xl,
   },
   keyboardView: {
     flex: 1,
@@ -269,6 +262,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.lg,
+    backgroundColor: Colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.primary[100],
   },
@@ -320,37 +314,12 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSizes.base,
     color: Colors.text.secondary,
   },
-  textAreaContainer: {
-    flexDirection: "row",
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.primary[200],
-    padding: Spacing.lg,
-    ...Shadows.sm,
-  },
-  textAreaEmoji: {
-    fontSize: 20,
-    marginRight: Spacing.md,
-  },
-  textAreaContent: {
-    flex: 1,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  charCount: {
-    fontSize: Typography.fontSizes.xs,
-    color: Colors.text.tertiary,
-    textAlign: "right",
-    marginTop: Spacing.sm,
-  },
 
   // Footer
   footer: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
+    backgroundColor: Colors.background.primary,
     borderTopWidth: 1,
     borderTopColor: Colors.primary[100],
   },

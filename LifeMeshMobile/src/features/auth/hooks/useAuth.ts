@@ -1,3 +1,4 @@
+// src/features/auth/hooks/useAuth.ts (Updated)
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import {
   loginStart,
@@ -5,6 +6,7 @@ import {
   loginFailure,
   logout as logoutAction,
   clearError,
+  updateUser as updateUserAction, // 🆕 Import new action
 } from "../store/authSlice";
 import { authService } from "../services/authService";
 import { LoginRequest, RegisterRequest } from "../../../shared/types/api";
@@ -22,8 +24,6 @@ export const useAuth = () => {
 
       const response = await authService.login(credentials);
 
-      // For now, we'll assume no token is returned
-      // When your backend returns a token, we'll handle it here
       dispatch(
         loginSuccess({
           user: response.user,
@@ -43,16 +43,14 @@ export const useAuth = () => {
    */
   const register = async (userData: RegisterRequest) => {
     try {
-      dispatch(loginStart()); // Use same loading state
+      dispatch(loginStart());
 
       const response = await authService.register(userData);
 
-      // After successful registration, we could auto-login
-      // For now, just return success
       dispatch(
         loginSuccess({
           user: response,
-          token: "", // No token from register endpoint
+          token: "",
         })
       );
 
@@ -72,10 +70,17 @@ export const useAuth = () => {
       dispatch(logoutAction());
       return { success: true };
     } catch (error: any) {
-      // Even if logout fails, clear local state
       dispatch(logoutAction());
-      return { success: true }; // Always succeed locally
+      return { success: true };
     }
+  };
+
+  /**
+   * 🆕 NEW: Update user function
+   * Updates the current user data in the store
+   */
+  const updateUser = (userData: any) => {
+    dispatch(updateUserAction(userData));
   };
 
   /**
@@ -88,6 +93,7 @@ export const useAuth = () => {
   return {
     // State
     user: authState.user,
+    token: authState.token,
     isLoading: authState.isLoading,
     error: authState.error,
     isAuthenticated: authState.isAuthenticated,
@@ -96,6 +102,7 @@ export const useAuth = () => {
     login,
     register,
     logout,
+    updateUser, // 🆕 Add this new function
     clearAuthError,
   };
 };

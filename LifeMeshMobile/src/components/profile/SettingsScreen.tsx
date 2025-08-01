@@ -1,6 +1,6 @@
 // src/components/profile/SettingsScreen.tsx
 import React, { useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Dimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,9 +9,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
-  withDelay,
-  interpolate,
-  Extrapolate,
+  FadeIn,
+  SlideInLeft,
 } from "react-native-reanimated";
 import {
   Colors,
@@ -20,10 +19,8 @@ import {
   BorderRadius,
   Shadows,
 } from "../../shared/constants/theme";
-import { Card } from "../ui/Card";
+import { Card } from "../ui/common/Card";
 import { AnimatedPressable } from "../ui/AnimatedPressable";
-
-const { width, height } = Dimensions.get("window");
 
 interface SettingsScreenProps {
   isVisible: boolean;
@@ -40,53 +37,35 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   // Animation values
   const slideAnimation = useSharedValue(0);
-  const overlayAnimation = useSharedValue(0);
-  const contentAnimation = useSharedValue(0);
 
   useEffect(() => {
     if (isVisible) {
-      overlayAnimation.value = withTiming(1, { duration: 300 });
       slideAnimation.value = withSpring(1, { damping: 15 });
-      contentAnimation.value = withDelay(200, withTiming(1, { duration: 400 }));
     } else {
-      contentAnimation.value = withTiming(0, { duration: 200 });
       slideAnimation.value = withTiming(0, { duration: 300 });
-      overlayAnimation.value = withDelay(100, withTiming(0, { duration: 200 }));
     }
   }, [isVisible]);
 
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayAnimation.value,
-    pointerEvents: isVisible ? "auto" : "none",
-  }));
-
   const slideStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(
-      slideAnimation.value,
-      [0, 1],
-      [height, 0],
-      Extrapolate.CLAMP
-    );
-
     return {
-      transform: [{ translateY }],
+      transform: [
+        {
+          translateX: slideAnimation.value === 1 ? 0 : -1000,
+        },
+      ],
     };
   });
 
-  const contentStyle = useAnimatedStyle(() => {
-    const opacity = contentAnimation.value;
-    const translateY = interpolate(
-      contentAnimation.value,
-      [0, 1],
-      [20, 0],
-      Extrapolate.CLAMP
-    );
-
-    return {
-      opacity,
-      transform: [{ translateY }],
-    };
-  });
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: onLogout,
+      },
+    ]);
+  };
 
   const settingsGroups = [
     {
@@ -157,14 +136,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   if (!isVisible) return null;
 
   return (
-    <Animated.View style={[styles.overlay, overlayStyle]}>
-      <StatusBar style="dark" backgroundColor="rgba(0,0,0,0.5)" />
+    <View style={styles.fullScreenOverlay}>
+      <StatusBar style="dark" backgroundColor={Colors.background.primary} />
 
       <Animated.View style={[styles.container, slideStyle]}>
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
           <AnimatedPressable onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={Colors.text.primary} />
+            <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
           </AnimatedPressable>
           <Text style={styles.title}>Settings</Text>
           <View style={styles.placeholder} />
@@ -176,9 +155,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <Animated.View style={contentStyle}>
+          <Animated.View entering={FadeIn.delay(200)}>
             {settingsGroups.map((group, groupIndex) => (
-              <View key={groupIndex} style={styles.groupContainer}>
+              <Animated.View
+                key={groupIndex}
+                entering={SlideInLeft.delay(300 + groupIndex * 100)}
+                style={styles.groupContainer}
+              >
                 <Text style={styles.groupTitle}>{group.title}</Text>
                 <Card style={styles.groupCard}>
                   {group.items.map((item, index) => (
@@ -214,41 +197,51 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     </AnimatedPressable>
                   ))}
                 </Card>
-              </View>
+              </Animated.View>
             ))}
 
             {/* Logout Button */}
-            <AnimatedPressable onPress={onLogout} style={styles.logoutButton}>
-              <Ionicons name="log-out-outline" size={20} color={Colors.error} />
-              <Text style={styles.logoutText}>Logout</Text>
-            </AnimatedPressable>
+            <Animated.View entering={SlideInLeft.delay(800)}>
+              <AnimatedPressable
+                onPress={handleLogout}
+                style={styles.logoutButton}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={20}
+                  color={Colors.error}
+                />
+                <Text style={styles.logoutText}>Logout</Text>
+              </AnimatedPressable>
+            </Animated.View>
 
             {/* App Version */}
-            <Text style={styles.versionText}>LifeMesh v1.0.0</Text>
+            <Animated.View entering={FadeIn.delay(1000)}>
+              <Text style={styles.versionText}>LifeMesh v1.0.0</Text>
+            </Animated.View>
+
+            {/* Bottom spacing */}
+            <View style={{ height: insets.bottom + Spacing.xl }} />
           </Animated.View>
         </ScrollView>
       </Animated.View>
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  fullScreenOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: Colors.background.primary,
     zIndex: 1000,
   },
   container: {
     flex: 1,
     backgroundColor: Colors.background.primary,
-    borderTopLeftRadius: BorderRadius["2xl"],
-    borderTopRightRadius: BorderRadius["2xl"],
-    marginTop: 50,
-    ...Shadows.xl,
   },
 
   // Header
@@ -258,6 +251,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.lg,
+    backgroundColor: Colors.background.primary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.primary[100],
   },
@@ -279,19 +273,11 @@ const styles = StyleSheet.create({
   },
 
   // Content
-  contentWrapper: {
-    flex: 1, // Take remaining space after header
-  },
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: Spacing["3xl"], // Extra padding for scrolling
-  },
   groupContainer: {
     marginBottom: Spacing.xl,
-    paddingBottom: Spacing.md, // Add padding for better scrolling
   },
   groupTitle: {
     fontSize: Typography.fontSizes.lg,
@@ -302,7 +288,6 @@ const styles = StyleSheet.create({
   },
   groupCard: {
     marginHorizontal: Spacing.xl,
-    ...Shadows.lg,
   },
   settingItem: {
     flexDirection: "row",

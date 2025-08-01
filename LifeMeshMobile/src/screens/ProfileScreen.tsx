@@ -1,19 +1,26 @@
-// src/screens/ProfileScreen.tsx
+// src/screens/ProfileScreen.tsx (Updated with avatar upload)
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  Platform,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
-  withDelay,
-  withSpring,
+  useAnimatedScrollHandler,
   interpolate,
   Extrapolate,
+  withTiming,
+  withDelay,
+  FadeInUp,
+  FadeInDown,
 } from "react-native-reanimated";
 
 import { useAuth } from "../features/auth/hooks/useAuth";
@@ -25,341 +32,263 @@ import {
   Shadows,
 } from "../shared/constants/theme";
 
-// Components
-import { PentagonAvatar } from "../components/ui/PentagonAvatar";
-import { AnimatedPressable } from "../components/ui/AnimatedPressable";
-import { Card } from "../components/ui/Card";
-import { StatCard } from "../components/ui/StatCard";
-import { SettingsScreen } from "../components/profile/SettingsScreen";
+// Profile-specific components
+import { ProfileHeader } from "../components/ui/profile/ProfileHeader";
+import { ProfileStats } from "../components/ui/profile/ProfileStats";
+import { ProfileBio } from "../components/ui/profile/ProfileBio";
+import { ProfileActivity } from "../components/ui/profile/ProfileActivity";
+import { ProfileActions } from "../components/ui/profile/ProfileActions";
 import { EditProfileModal } from "../components/profile/EditProfileModal";
+import { SettingsScreen } from "../components/profile/SettingsScreen";
+
+const { width, height } = Dimensions.get("window");
+const HEADER_HEIGHT = 280;
+const COMPACT_HEADER_HEIGHT = 100;
 
 export const ProfileScreen = () => {
-  const { user, logout } = useAuth();
+  const { user, token, logout, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
-  const [avatarUri, setAvatarUri] = useState<string | null>(
-    user?.avatar || null
-  );
-  const [showSettings, setShowSettings] = useState(false);
-  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [tokenLoading, setTokenLoading] = useState(true); // 🆕 Add this missing state
 
-  // Animation values
-  const headerAnimation = useSharedValue(0);
-  const avatarAnimation = useSharedValue(0);
-  const buttonsAnimation = useSharedValue(0);
-  const contentAnimation = useSharedValue(0);
+  const authToken = token;
+  // Scroll animation
+  const scrollY = useSharedValue(0);
+  const headerOpacity = useSharedValue(1);
 
   useEffect(() => {
-    // Staggered animations
-    headerAnimation.value = withTiming(1, { duration: 800 });
-    avatarAnimation.value = withDelay(300, withSpring(1, { damping: 12 }));
-    buttonsAnimation.value = withDelay(500, withSpring(1, { damping: 15 }));
-    contentAnimation.value = withDelay(700, withTiming(1, { duration: 600 }));
-  }, []);
+    // Initial fade-in animation
+    headerOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
 
-  const handleImagePicker = async () => {
-    try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log("🔑 Token from Redux:", token ? "exists" : "not found");
+    console.log("🔑 Full token value:", token);
+  }, [token]);
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission needed",
-          "We need camera roll permissions to change your avatar!"
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
+  // 🆕 Handle avatar update
+  const handleAvatarUpdate = (newAvatarUrl: string) => {
+    console.log("🔄 Avatar updated:", newAvatarUrl);
+    if (user && updateUser) {
+      updateUser({
+        ...user,
+        avatar: newAvatarUrl,
       });
-
-      if (!result.canceled && result.assets[0]) {
-        setAvatarUri(result.assets[0].uri);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Something went wrong while selecting the image");
     }
   };
 
-  const handleSaveProfile = async (userData: any) => {
-    console.log("Saving profile data:", userData);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, HEADER_HEIGHT - 100],
+      [1, 0],
+      Extrapolate.CLAMP
+    );
+
+    const translateY = interpolate(
+      scrollY.value,
+      [0, HEADER_HEIGHT],
+      [0, -50],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      opacity,
+      transform: [{ translateY }],
+    };
+  });
+
+  const compactHeaderStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [HEADER_HEIGHT - 80, HEADER_HEIGHT],
+      [0, 1],
+      Extrapolate.CLAMP
+    );
+
+    const translateY = interpolate(
+      scrollY.value,
+      [HEADER_HEIGHT - 80, HEADER_HEIGHT],
+      [-20, 0],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      opacity,
+      transform: [{ translateY }],
+    };
+  });
+
+  const handleUpdateProfile = async (userData: Partial<any>) => {
+    // 🔄 Update profile via API
+    try {
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/user/me`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(userData),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success && updateUser) {
+        updateUser(result.data);
+      } else {
+        throw new Error(result.error || "Update failed");
+      }
+    } catch (error) {
+      console.error("Profile update error:", error);
+      throw error;
+    }
   };
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          setShowSettings(false);
-          await logout();
-        },
-      },
-    ]);
-  };
-
-  const handleShareProfile = () => {
-    Alert.alert("Share Profile", "Share functionality coming soon!");
-  };
-
-  if (!user) {
+  if (!user || !tokenLoading) {
     return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <StatusBar style="dark" />
+        <Text style={styles.loadingText}>
+          {!user ? "Loading profile..." : "Loading authentication..."}
+        </Text>
       </View>
     );
   }
 
-  // Animation styles
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: headerAnimation.value,
-    transform: [
-      {
-        translateY: interpolate(
-          headerAnimation.value,
-          [0, 1],
-          [-30, 0],
-          Extrapolate.CLAMP
-        ),
-      },
-    ],
-  }));
-
-  const avatarAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: avatarAnimation.value,
-    transform: [
-      {
-        scale: interpolate(
-          avatarAnimation.value,
-          [0, 1],
-          [0.5, 1],
-          Extrapolate.CLAMP
-        ),
-      },
-    ],
-  }));
-
-  const buttonsAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: buttonsAnimation.value,
-    transform: [
-      {
-        translateY: interpolate(
-          buttonsAnimation.value,
-          [0, 1],
-          [20, 0],
-          Extrapolate.CLAMP
-        ),
-      },
-    ],
-  }));
-
-  const contentAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: contentAnimation.value,
-    transform: [
-      {
-        translateY: interpolate(
-          contentAnimation.value,
-          [0, 1],
-          [30, 0],
-          Extrapolate.CLAMP
-        ),
-      },
-    ],
-  }));
-
   const stats = [
-    { label: "Posts", value: 12, icon: "📝" },
-    { label: "Reputation", value: user.reputation, icon: "⭐" },
-    { label: "Level", value: user.level, icon: "🏆" },
-    { label: "Helped", value: 8, icon: "🤝" },
+    { label: "Posts", value: 24, icon: "document-text-outline" },
+    { label: "Helped", value: user.reputation, icon: "heart-outline" },
+    { label: "Level", value: user.level, icon: "trophy-outline" },
+    { label: "Friends", value: 18, icon: "people-outline" },
   ];
 
   const activities = [
-    { title: "Donated old books", time: "3 days ago", type: "donation" },
-    { title: "Joined community cleanup", time: "1 week ago", type: "event" },
     {
-      title: "Helped with moving furniture",
-      time: "2 weeks ago",
+      id: "1",
       type: "help",
+      title: "Helped neighbor with groceries",
+      time: "2 hours ago",
+      icon: "bag-outline",
+      color: Colors.success,
+    },
+    {
+      id: "2",
+      type: "post",
+      title: "Shared local event information",
+      time: "1 day ago",
+      icon: "megaphone-outline",
+      color: Colors.primary[600],
+    },
+    {
+      id: "3",
+      type: "donation",
+      title: "Donated old books to library",
+      time: "3 days ago",
+      icon: "book-outline",
+      color: Colors.accent[600],
     },
   ];
 
-  const getActivityColor = (type: string) => {
-    switch (type) {
-      case "help":
-        return Colors.primary[500];
-      case "donation":
-        return Colors.accent[500];
-      case "event":
-        return Colors.secondary[500];
-      default:
-        return Colors.primary[500];
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <StatusBar
-        style="light"
-        backgroundColor={Colors.primary[600]}
-        translucent
-      />
+      <StatusBar style="dark" backgroundColor={Colors.background.primary} />
 
-      {/* Compact Green Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <LinearGradient
-          colors={[Colors.primary[500], Colors.primary[700]]}
-          style={styles.headerGradient}
-        >
-          {/* Decorative elements */}
-          <View style={styles.circle1} />
-          <View style={styles.circle2} />
-
-          {/* Settings button - positioned at far right */}
-          <AnimatedPressable
-            onPress={() => setShowSettings(true)}
-            style={[styles.settingsButton, { top: insets.top + 10 }]}
-          >
-            <Ionicons name="settings-outline" size={22} color={Colors.white} />
-          </AnimatedPressable>
-        </LinearGradient>
-      </Animated.View>
-
-      {/* Avatar - perfectly positioned between green and white */}
-      <Animated.View style={[styles.avatarContainer, avatarAnimatedStyle]}>
-        <PentagonAvatar
-          imageUri={avatarUri}
-          size={120}
-          onPress={handleImagePicker}
-        />
-      </Animated.View>
-
-      {/* White Content Section */}
-      <View style={styles.contentSection}>
-        {/* User Info */}
-        <Animated.View style={[styles.userInfo, buttonsAnimatedStyle]}>
-          <Text style={styles.displayName}>
-            {user.displayName || user.username}
-          </Text>
-          <Text style={styles.username}>@{user.username}</Text>
-
-          {/* Location */}
-          {user.address && (
-            <View style={styles.locationContainer}>
-              <Ionicons
-                name="location-outline"
-                size={16}
-                color={Colors.primary[600]}
-              />
-              <Text style={styles.locationText}>{user.address}</Text>
-            </View>
-          )}
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <AnimatedPressable
-              onPress={() => setShowEditProfile(true)}
-              style={[styles.actionButton, styles.editButton]}
-            >
-              <Ionicons name="create-outline" size={18} color={Colors.white} />
-              <Text style={styles.buttonText}>Edit Profile</Text>
-            </AnimatedPressable>
-
-            <AnimatedPressable
-              onPress={handleShareProfile}
-              style={[styles.actionButton, styles.shareButton]}
-            >
-              <Ionicons
-                name="share-outline"
-                size={18}
-                color={Colors.primary[600]}
-              />
-              <Text style={[styles.buttonText, { color: Colors.primary[600] }]}>
-                Share
+      {/* Compact Header (shows on scroll) */}
+      <Animated.View style={[styles.compactHeader, compactHeaderStyle]}>
+        <View style={[styles.compactContent, { paddingTop: insets.top }]}>
+          <View style={styles.compactLeft}>
+            <View style={styles.compactAvatar}>
+              <Text style={styles.compactAvatarText}>
+                {(user.displayName || user.username).charAt(0).toUpperCase()}
               </Text>
-            </AnimatedPressable>
+            </View>
+            <Text style={styles.compactName}>
+              {user.displayName || user.username}
+            </Text>
           </View>
+          <ProfileActions
+            onEdit={() => setShowEditModal(true)}
+            onSettings={() => setShowSettingsModal(true)}
+            variant="compact"
+          />
+        </View>
+      </Animated.View>
+
+      {/* Main Content */}
+      <Animated.ScrollView
+        style={styles.scrollView}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
+        {/* Main Header */}
+        <Animated.View style={[styles.headerContainer, headerAnimatedStyle]}>
+          <ProfileHeader
+            user={user}
+            onEdit={() => setShowEditModal(true)}
+            onSettings={() => setShowSettingsModal(true)}
+            onAvatarUpdate={handleAvatarUpdate} // 🆕 Pass avatar update handler
+            authToken={authToken} // 🆕 Pass auth token
+            style={{ paddingTop: insets.top }}
+          />
         </Animated.View>
 
-        {/* Content */}
-        <ScrollView
-          style={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
-          <Animated.View style={contentAnimatedStyle}>
-            {/* Stats */}
-            <View style={styles.statsContainer}>
-              {stats.map((stat, index) => (
-                <StatCard
-                  key={index}
-                  label={stat.label}
-                  value={stat.value}
-                  icon={stat.icon}
-                />
-              ))}
-            </View>
-
-            {/* Bio */}
-            {user.bio && (
-              <Card style={styles.bioCard}>
-                <Text style={styles.sectionTitle}>About</Text>
-                <Text style={styles.bioText}>{user.bio}</Text>
-              </Card>
-            )}
-
-            {/* Recent Activity */}
-            <Card style={styles.activityCard}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              {activities.map((activity, index) => (
-                <View key={index} style={styles.activityItem}>
-                  <View style={styles.activityLeft}>
-                    <View
-                      style={[
-                        styles.activityDot,
-                        { backgroundColor: getActivityColor(activity.type) },
-                      ]}
-                    />
-                    <View style={styles.activityContent}>
-                      <Text style={styles.activityTitle}>{activity.title}</Text>
-                      <Text style={styles.activityTime}>{activity.time}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </Card>
-
-            {/* Member Since */}
-            <Card style={styles.joinCard}>
-              <Text style={styles.joinTitle}>Member Since</Text>
-              <Text style={styles.joinDate}>
-                {new Date(user.createdAt).toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </Text>
-            </Card>
+        {/* Content Section */}
+        <View style={styles.contentContainer}>
+          {/* Stats */}
+          <Animated.View
+            entering={FadeInUp.delay(400).springify()}
+            style={styles.statsContainer}
+          >
+            <ProfileStats stats={stats} />
           </Animated.View>
-        </ScrollView>
-      </View>
 
-      {/* Modals */}
-      <SettingsScreen
-        isVisible={showSettings}
-        onClose={() => setShowSettings(false)}
-        onLogout={handleLogout}
+          {/* Bio */}
+          {user.bio && (
+            <Animated.View
+              entering={FadeInUp.delay(500).springify()}
+              style={styles.bioContainer}
+            >
+              <ProfileBio bio={user.bio} />
+            </Animated.View>
+          )}
+
+          {/* Recent Activity */}
+          <Animated.View
+            entering={FadeInUp.delay(600).springify()}
+            style={styles.activityContainer}
+          >
+            <ProfileActivity activities={activities} />
+          </Animated.View>
+
+          {/* Bottom Spacing */}
+          <View style={{ height: 100 }} />
+        </View>
+      </Animated.ScrollView>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isVisible={showEditModal}
+        user={user}
+        onClose={() => setShowEditModal(false)}
+        onSave={handleUpdateProfile}
       />
 
-      <EditProfileModal
-        isVisible={showEditProfile}
-        user={user}
-        onClose={() => setShowEditProfile(false)}
-        onSave={handleSaveProfile}
+      {/* Settings Modal */}
+      <SettingsScreen
+        isVisible={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onLogout={logout}
       />
     </View>
   );
@@ -368,210 +297,96 @@ export const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: Colors.background.primary,
   },
 
-  // Compact Green Header
-  header: {
-    height: 120, // Much smaller
-    overflow: "hidden",
-  },
-  headerGradient: {
+  // Loading
+  loadingContainer: {
     flex: 1,
-    position: "relative",
-  },
-  circle1: {
-    position: "absolute",
-    top: -20,
-    right: -30,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
-  circle2: {
-    position: "absolute",
-    bottom: -10,
-    left: -20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-  },
-  settingsButton: {
-    position: "absolute",
-    right: 16, // Far right position
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
     justifyContent: "center",
-  },
-
-  // Avatar - positioned between sections
-  avatarContainer: {
-    position: "absolute",
-    top: 60, // Half of header height (120/2)
-    alignSelf: "center",
-    zIndex: 10,
-  },
-
-  // White Content Section
-  contentSection: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    marginTop: 60, // Same as avatar top position
-    borderTopLeftRadius: BorderRadius["2xl"],
-    borderTopRightRadius: BorderRadius["2xl"],
-    paddingTop: 80, // Space for avatar (60 + 20 padding)
-    ...Shadows.lg,
-  },
-
-  // User Info
-  userInfo: {
     alignItems: "center",
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.xl,
+    backgroundColor: Colors.background.primary,
   },
-  displayName: {
-    fontSize: Typography.fontSizes.xl,
-    fontWeight: Typography.fontWeights.bold as any,
-    color: Colors.text.primary,
-    marginBottom: 2,
-  },
-  username: {
-    fontSize: Typography.fontSizes.sm,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.md,
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.lg,
-    backgroundColor: Colors.primary[50],
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-  },
-  locationText: {
-    fontSize: Typography.fontSizes.sm,
-    color: Colors.text.secondary,
-    marginLeft: Spacing.xs,
-  },
-
-  // Action Buttons
-  actionButtons: {
-    flexDirection: "row",
-    gap: Spacing.md,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.xl,
-    minWidth: 120,
-    justifyContent: "center",
-    ...Shadows.md,
-  },
-  editButton: {
-    backgroundColor: Colors.primary[600],
-  },
-  shareButton: {
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.primary[200],
-  },
-  buttonText: {
-    fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.medium as any,
-    color: Colors.white,
-    marginLeft: Spacing.xs,
-  },
-
-  // Scrollable Content
-  scrollContent: {
-    flex: 1,
-    paddingHorizontal: Spacing.xl,
-  },
-
-  // Stats
-  statsContainer: {
-    flexDirection: "row",
-    marginBottom: Spacing.xl,
-  },
-
-  // Bio
-  bioCard: {
-    marginBottom: Spacing.xl,
-    ...Shadows.lg,
-  },
-  sectionTitle: {
+  loadingText: {
     fontSize: Typography.fontSizes.lg,
-    fontWeight: Typography.fontWeights.semibold as any,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-  },
-  bioText: {
-    fontSize: Typography.fontSizes.base,
     color: Colors.text.secondary,
-    lineHeight: Typography.lineHeights.base * 1.4,
+    fontWeight: Typography.fontWeights.medium as any,
   },
 
-  // Activity
-  activityCard: {
-    marginBottom: Spacing.xl,
-    ...Shadows.lg,
-  },
-  activityItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.md,
+  // Compact Header
+  compactHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: COMPACT_HEADER_HEIGHT,
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.primary[50],
-  },
-  activityLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  activityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: Spacing.md,
+    borderBottomColor: Colors.primary[100],
+    zIndex: 10,
     ...Shadows.sm,
   },
-  activityContent: {
+  compactContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.sm,
+  },
+  compactLeft: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
-  activityTitle: {
-    fontSize: Typography.fontSizes.base,
-    fontWeight: Typography.fontWeights.medium as any,
-    color: Colors.text.primary,
-    marginBottom: 2,
-  },
-  activityTime: {
-    fontSize: Typography.fontSizes.sm,
-    color: Colors.text.secondary,
-  },
-
-  // Join Date
-  joinCard: {
+  compactAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primary[600],
     alignItems: "center",
-    marginBottom: Spacing["2xl"],
-    ...Shadows.lg,
+    justifyContent: "center",
+    marginRight: Spacing.sm,
   },
-  joinTitle: {
-    fontSize: Typography.fontSizes.base,
-    fontWeight: Typography.fontWeights.medium as any,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.xs,
+  compactAvatarText: {
+    color: Colors.white,
+    fontSize: Typography.fontSizes.sm,
+    fontWeight: Typography.fontWeights.bold as any,
   },
-  joinDate: {
+  compactName: {
     fontSize: Typography.fontSizes.lg,
     fontWeight: Typography.fontWeights.semibold as any,
-    color: Colors.primary[600],
+    color: Colors.text.primary,
+  },
+
+  // Main Content
+  scrollView: {
+    flex: 1,
+  },
+  headerContainer: {
+    height: HEADER_HEIGHT,
+  },
+  contentContainer: {
+    backgroundColor: Colors.background.primary,
+    borderTopLeftRadius: BorderRadius["2xl"],
+    borderTopRightRadius: BorderRadius["2xl"],
+    marginTop: -30,
+    paddingTop: Spacing["2xl"],
+    minHeight: height - HEADER_HEIGHT + 50,
+    ...Shadows.lg,
+  },
+
+  // Content sections
+  statsContainer: {
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  bioContainer: {
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  activityContainer: {
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.xl,
   },
 });
