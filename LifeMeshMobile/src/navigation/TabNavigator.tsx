@@ -1,4 +1,4 @@
-// src/navigation/TabNavigator.tsx
+// src/navigation/TabNavigator.tsx (Fixed)
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text, StyleSheet } from "react-native";
@@ -7,18 +7,12 @@ import { Ionicons } from "@expo/vector-icons";
 
 // Import screens
 import { ProfileScreen } from "../screens/ProfileScreen";
+import { EmulatorFriendlyMap as MapScreen } from "../screens/EmulatorFriendlyMap";
 
 // Placeholder screens for now
 const HomeScreen = () => (
   <View style={styles.placeholderContainer}>
     <Text style={styles.placeholderText}>🏠 Home Screen</Text>
-    <Text style={styles.placeholderSubtext}>(Future Development)</Text>
-  </View>
-);
-
-const MapScreen = () => (
-  <View style={styles.placeholderContainer}>
-    <Text style={styles.placeholderText}>🗺️ Map Screen</Text>
     <Text style={styles.placeholderSubtext}>(Future Development)</Text>
   </View>
 );
@@ -83,7 +77,7 @@ export const TabNavigator = () => {
           fontWeight: Typography.fontWeights.medium as any,
           marginTop: 4,
         },
-        headerShown: false, // We'll handle headers in individual screens
+        headerShown: false,
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
