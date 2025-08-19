@@ -47,6 +47,8 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   const scale = useSharedValue(1);
   const pulseAnimation = useSharedValue(1);
 
+  const CLOUDINARY_CLOUD_NAME = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+
   // 🔄 Pulse animation for online status
   React.useEffect(() => {
     if (showOnlineStatus) {
@@ -75,25 +77,12 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   };
 
   const handleAvatarPress = async () => {
-    console.log("🖼️ Avatar pressed!"); // Debug log
-    console.log("🔧 showEditButton:", showEditButton);
-    console.log("🔑 authToken:", authToken ? "exists" : "missing");
-    if (!showEditButton || !authToken) {
-      console.log(
-        "❌ Avatar press blocked - showEditButton:",
-        showEditButton,
-        "authToken:",
-        !!authToken
-      );
-      return;
-    }
+    if (!showEditButton || !authToken) return;
 
     try {
       // 1. 📱 Request permissions
-      console.log("📱 Requesting permissions...");
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log("📱 Permission status:", status);
       if (status !== "granted") {
         Alert.alert(
           "Permission Required",
@@ -101,22 +90,17 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
         );
         return;
       }
-      console.log("🖼️ Opening image picker...");
+
       // 2. 🖼️ Pick image
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Keep the old syntax for now
         allowsEditing: true,
         aspect: [1, 1], // Square aspect ratio
         quality: 0.8, // Compress image
       });
 
-      console.log("📸 Image picker result:", result);
       if (!result.canceled && result.assets[0]) {
-        console.log("📸 Image selected:", result.assets[0].uri);
         await uploadAvatar(result.assets[0].uri);
-      } else {
-        console.log("❌ Image selection canceled or failed");
-        Alert.alert("No Image Selected", "Please select an image to upload.");
       }
     } catch (error) {
       console.error("Image picker error:", error);
@@ -128,47 +112,63 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
     try {
       setIsUploading(true);
 
-      // 3. 📁 Create form data
+      // 🔍 Extract file extension properly
+      const uriParts = imageUri.split(".");
+      const fileType = uriParts[uriParts.length - 1];
+
+      // 📁 Create FormData for direct Cloudinary upload
       const formData = new FormData();
-      formData.append("avatar", {
+      formData.append("file", {
         uri: imageUri,
-        type: "image/jpeg",
-        name: "avatar.jpg",
+        name: `avatar.${fileType}`,
+        type: `image/${fileType}`,
       } as any);
 
-      // 4. 🌐 Upload to backend
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/user/avatar`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "multipart/form-data",
-          },
-          body: formData,
-        }
-      );
+      // 🆕 Add Cloudinary upload preset (you'll need to create this)
+      formData.append("upload_preset", "lifemesh_avatars");
+      formData.append("folder", "lifemesh/avatars");
 
-      const result = await response.json();
+      // 📸 Upload directly to Cloudinary
+      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
-      if (result.success) {
-        // 5. ✅ Success - update local state
-        Alert.alert("Success", "Avatar updated successfully!");
-        if (onAvatarUpdate) {
-          onAvatarUpdate(result.data.avatarUrl);
+      const cloudinaryResponse = await fetch(cloudinaryUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      const cloudinaryResult = await cloudinaryResponse.json();
+      console.log("☁️ Cloudinary result:", cloudinaryResult);
+
+      if (cloudinaryResult.secure_url) {
+        // 💾 Now update your backend with the Cloudinary URL
+        const backendResponse = await fetch(
+          `${process.env.EXPO_PUBLIC_API_URL}/api/users/me`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ avatar: cloudinaryResult.secure_url }),
+          }
+        );
+
+        const backendResult = await backendResponse.json();
+
+        if (backendResult.success) {
+          Alert.alert("Success", "Avatar updated successfully!");
+          if (onAvatarUpdate) {
+            onAvatarUpdate(cloudinaryResult.secure_url);
+          }
         }
-      } else {
-        // 6. ❌ Handle API errors
-        Alert.alert("Upload Failed", result.error || "Failed to update avatar");
       }
     } catch (error) {
-      console.error("Avatar upload error:", error);
+      console.error("💥 Avatar upload error:", error);
       Alert.alert("Error", "Failed to upload avatar. Please try again.");
     } finally {
       setIsUploading(false);
     }
   };
-
   const avatarRadius = size / 2;
   const editButtonSize = size * 0.25;
   const statusSize = size * 0.2;

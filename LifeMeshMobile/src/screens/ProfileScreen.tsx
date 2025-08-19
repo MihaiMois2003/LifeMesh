@@ -46,13 +46,13 @@ const HEADER_HEIGHT = 280;
 const COMPACT_HEADER_HEIGHT = 100;
 
 export const ProfileScreen = () => {
-  const { user, token, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, token } = useAuth();
   const insets = useSafeAreaInsets();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [tokenLoading, setTokenLoading] = useState(true); // 🆕 Add this missing state
+  // const [authToken, setAuthToken] = useState<string | null>(null);
+  // const [tokenLoading, setTokenLoading] = useState(true); // 🆕 Add this missing state
 
-  const authToken = token;
   // Scroll animation
   const scrollY = useSharedValue(0);
   const headerOpacity = useSharedValue(1);
@@ -61,13 +61,35 @@ export const ProfileScreen = () => {
     // Initial fade-in animation
     headerOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
 
-    console.log("🔑 Token from Redux:", token ? "exists" : "not found");
-    console.log("🔑 Full token value:", token);
-  }, [token]);
+    // 🔑 Get auth token for API calls
+    //getAuthToken();
+  }, []);
+
+  // const getAuthToken = async () => {
+  //   try {
+  //     setTokenLoading(true);
+  //     const token = await AsyncStorage.getItem("authToken");
+  //     console.log(
+  //       "Retrieved token:",
+  //       token ? "Token exists" : "No token found"
+  //     ); // Debug log
+  //     console.log("Token length:", token?.length); // Debug log
+  //     setAuthToken(token);
+  //   } catch (error) {
+  //     console.error("Failed to get auth token:", error);
+  //   } finally {
+  //     setTokenLoading(false);
+  //   }
+  // };
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   // 🆕 Handle avatar update
   const handleAvatarUpdate = (newAvatarUrl: string) => {
-    console.log("🔄 Avatar updated:", newAvatarUrl);
     if (user && updateUser) {
       updateUser({
         ...user,
@@ -75,12 +97,6 @@ export const ProfileScreen = () => {
       });
     }
   };
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => {
@@ -126,26 +142,35 @@ export const ProfileScreen = () => {
   });
 
   const handleUpdateProfile = async (userData: Partial<any>) => {
-    // 🔄 Update profile via API
     try {
+      if (!token) {
+        console.log("No auth token available");
+        throw new Error("No authentication token found");
+      }
+
+      console.log("Making API call with token..."); // Debug log
+
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/user/me`,
+        `${process.env.EXPO_PUBLIC_API_URL}/api/users/me`,
         {
           method: "PUT",
           headers: {
-            Authorization: `Bearer ${authToken}`,
+            Authorization: `Bearer ${token}`, // Use token from Redux
             "Content-Type": "application/json",
           },
           body: JSON.stringify(userData),
         }
       );
 
+      console.log("Response status:", response.status); // Debug log
+
       const result = await response.json();
+      console.log("Response data:", result); // Debug log
 
       if (result.success && updateUser) {
         updateUser(result.data);
       } else {
-        throw new Error(result.error || "Update failed");
+        throw new Error(result.message || result.error || "Update failed");
       }
     } catch (error) {
       console.error("Profile update error:", error);
@@ -153,13 +178,11 @@ export const ProfileScreen = () => {
     }
   };
 
-  if (!user || !tokenLoading) {
+  if (!user) {
     return (
       <View style={styles.loadingContainer}>
         <StatusBar style="dark" />
-        <Text style={styles.loadingText}>
-          {!user ? "Loading profile..." : "Loading authentication..."}
-        </Text>
+        <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
   }
@@ -238,7 +261,7 @@ export const ProfileScreen = () => {
             onEdit={() => setShowEditModal(true)}
             onSettings={() => setShowSettingsModal(true)}
             onAvatarUpdate={handleAvatarUpdate} // 🆕 Pass avatar update handler
-            authToken={authToken} // 🆕 Pass auth token
+            authToken={token} // 🆕 Pass auth token
             style={{ paddingTop: insets.top }}
           />
         </Animated.View>

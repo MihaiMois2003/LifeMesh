@@ -1,7 +1,10 @@
 // src/app/api/user/avatar/route.ts
 import { NextRequest } from "next/server";
-import { container } from "../../../../infrastructure/container";
-import { successResponse, errorResponse } from "../../../../utils/api-response";
+import { container } from "../../../../../infrastructure/container";
+import {
+  successResponse,
+  errorResponse,
+} from "../../../../../utils/api-response";
 
 export async function POST(request: NextRequest) {
   try {

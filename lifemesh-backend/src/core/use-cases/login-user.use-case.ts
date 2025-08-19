@@ -39,6 +39,7 @@ export class LoginUserUseCase {
 
     // 4. Generate JWT token
     const token = this.jwtService.generateToken(user.id);
+    console.log("Generated JWT token:", token);
 
     // 5. Return user without password
     const { password, ...userWithoutPassword } = user;
