@@ -208,7 +208,7 @@ export class CreatePostUseCase {
       postData.radius = request.radius || undefined;
     }
 
-    // Add image URLs if provided (ADD THIS)
+    // Add image URLs if provided
     if (request.imageUrls && request.imageUrls.length > 0) {
       postData.imageUrls = request.imageUrls;
     }

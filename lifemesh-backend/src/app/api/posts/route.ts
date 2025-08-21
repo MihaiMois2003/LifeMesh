@@ -65,6 +65,233 @@ const createPostSchema = z.object({
 });
 
 /**
+ * Schema for updating a post
+ * All fields are optional since you might only want to update some fields
+ */
+const updatePostSchema = z.object({
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(200, "Title cannot exceed 200 characters")
+    .optional(),
+
+  content: z
+    .string()
+    .min(1, "Content is required")
+    .max(5000, "Content cannot exceed 5000 characters")
+    .optional(),
+
+  category: z.nativeEnum(Category).optional(),
+  type: z.nativeEnum(PostType).optional(),
+
+  // Location fields (all optional)
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  address: z.string().max(255).optional(),
+  radius: z.number().min(0).max(50000).optional(),
+
+  // Media
+  imageUrls: z.array(z.string().url()).optional(),
+
+  // Expiration
+  expiresAt: z
+    .string()
+    .datetime()
+    .optional()
+    .transform((str) => (str ? new Date(str) : undefined)),
+});
+
+// ==========================================
+// ✏️ PUT /api/posts - UPDATE POST
+// ==========================================
+
+export async function PUT(request: NextRequest) {
+  try {
+    // ==========================================
+    // 1️⃣ AUTHENTICATION CHECK
+    // ==========================================
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return errorResponse("Authentication required", 401);
+    }
+
+    // Extract and verify JWT token
+    const token = authHeader.substring(7);
+    const decoded = container.jwtService.verifyToken(token);
+    if (!decoded) {
+      return errorResponse("Invalid or expired token", 401);
+    }
+
+    // ==========================================
+    // 2️⃣ GET POST ID FROM QUERY PARAMETERS
+    // ==========================================
+    const { searchParams } = new URL(request.url);
+    const postId = searchParams.get("id");
+
+    if (!postId) {
+      return errorResponse("Post ID is required", 400);
+    }
+
+    // Validate UUID format
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(postId)) {
+      return errorResponse("Invalid post ID format", 400);
+    }
+
+    // ==========================================
+    // 3️⃣ CHECK POST EXISTS AND OWNERSHIP
+    // ==========================================
+    const existingPost = await container.postRepository.findById(postId);
+    if (!existingPost) {
+      return errorResponse("Post not found", 404);
+    }
+
+    // Check if the authenticated user owns this post
+    if (existingPost.authorId !== decoded.userId) {
+      return errorResponse("You can only edit your own posts", 403);
+    }
+
+    // ==========================================
+    // 4️⃣ PARSE AND VALIDATE REQUEST BODY
+    // ==========================================
+    const body = await request.json();
+    const validatedData = updatePostSchema.parse(body);
+
+    // ==========================================
+    // 5️⃣ EXECUTE UPDATE USE CASE
+    // ==========================================
+    const updatedPost = await container.postRepository.update(postId, {
+      title: validatedData.title,
+      content: validatedData.content,
+      category: validatedData.category,
+      type: validatedData.type,
+      latitude: validatedData.latitude,
+      longitude: validatedData.longitude,
+      address: validatedData.address,
+      radius: validatedData.radius,
+      imageUrls: validatedData.imageUrls,
+      expiresAt: validatedData.expiresAt,
+    });
+
+    // ==========================================
+    // 6️⃣ RETURN SUCCESS RESPONSE
+    // ==========================================
+    return successResponse({ post: updatedPost }, "Post updated successfully");
+  } catch (error: any) {
+    console.error("Update post error:", error);
+
+    // ==========================================
+    // 🚨 ERROR HANDLING
+    // ==========================================
+
+    // Zod validation errors
+    if (error.name === "ZodError") {
+      const firstError = error.errors[0];
+      return errorResponse(`Validation error: ${firstError.message}`, 400);
+    }
+
+    // Business logic errors
+    if (error.message) {
+      if (error.message.includes("not found")) {
+        return errorResponse(error.message, 404);
+      }
+      if (error.message.includes("own posts")) {
+        return errorResponse(error.message, 403);
+      }
+    }
+
+    // Generic server error
+    return errorResponse("Failed to update post", 500);
+  }
+}
+
+// ==========================================
+// 🗑️ DELETE /api/posts - DELETE POST
+// ==========================================
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // ==========================================
+    // 1️⃣ AUTHENTICATION CHECK
+    // ==========================================
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return errorResponse("Authentication required", 401);
+    }
+
+    // Extract and verify JWT token
+    const token = authHeader.substring(7);
+    const decoded = container.jwtService.verifyToken(token);
+    if (!decoded) {
+      return errorResponse("Invalid or expired token", 401);
+    }
+
+    // ==========================================
+    // 2️⃣ GET POST ID FROM QUERY PARAMETERS
+    // ==========================================
+    const { searchParams } = new URL(request.url);
+    const postId = searchParams.get("id");
+
+    if (!postId) {
+      return errorResponse("Post ID is required", 400);
+    }
+
+    // Validate UUID format
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(postId)) {
+      return errorResponse("Invalid post ID format", 400);
+    }
+
+    // ==========================================
+    // 3️⃣ CHECK POST EXISTS AND OWNERSHIP
+    // ==========================================
+    const existingPost = await container.postRepository.findById(postId);
+    if (!existingPost) {
+      return errorResponse("Post not found", 404);
+    }
+
+    // Check if the authenticated user owns this post
+    if (existingPost.authorId !== decoded.userId) {
+      return errorResponse("You can only delete your own posts", 403);
+    }
+
+    // ==========================================
+    // 4️⃣ EXECUTE DELETE
+    // ==========================================
+    await container.postRepository.delete(postId);
+
+    // ==========================================
+    // 5️⃣ RETURN SUCCESS RESPONSE
+    // ==========================================
+    return successResponse(
+      { deletedPostId: postId },
+      "Post deleted successfully"
+    );
+  } catch (error: any) {
+    console.error("Delete post error:", error);
+
+    // ==========================================
+    // 🚨 ERROR HANDLING
+    // ==========================================
+
+    // Business logic errors
+    if (error.message) {
+      if (error.message.includes("not found")) {
+        return errorResponse(error.message, 404);
+      }
+      if (error.message.includes("own posts")) {
+        return errorResponse(error.message, 403);
+      }
+    }
+
+    // Generic server error
+    return errorResponse("Failed to delete post", 500);
+  }
+}
+
+/**
  * Schema for getting posts (query parameters)
  */
 const getPostsSchema = z.object({
@@ -232,34 +459,3 @@ export async function GET(request: NextRequest) {
     return errorResponse("Failed to retrieve posts", 500);
   }
 }
-
-/**
- * 🎯 API ENDPOINTS SUMMARY:
- *
- * POST /api/posts
- * - Creates a new post
- * - Requires authentication (JWT token)
- * - Validates all input data
- * - Returns the created post
- *
- * GET /api/posts
- * - Gets posts with pagination/filtering
- * - No authentication required (public feed)
- * - Supports query parameters:
- *   - page, pageSize (pagination)
- *   - category, search, authorId (filtering)
- *   - sortBy (sorting)
- *
- * Example requests:
- *
- * POST /api/posts
- * Authorization: Bearer <jwt-token>
- * {
- *   "title": "Need help with groceries",
- *   "content": "Can someone help me carry groceries?",
- *   "category": "HELP_REQUEST",
- *   "imageUrls": ["https://example.com/image.jpg"]
- * }
- *
- * GET /api/posts?page=1&pageSize=20&category=HELP_REQUEST&sortBy=newest
- */
