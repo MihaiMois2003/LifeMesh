@@ -39,8 +39,20 @@ export enum PostStatus {
 // ==========================================
 
 /**
- * Complete Post interface matching your Prisma schema exactly
- * This represents a post as it exists in your database
+ * 👤 POST AUTHOR
+ * Author details included with posts
+ */
+export interface PostAuthor {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatar: string | null;
+  isVerified: boolean;
+}
+
+/**
+ * 🎯 POST INTERFACE (UPDATED)
+ * Complete Post interface with author details
  */
 export interface Post {
   // Core identification
@@ -78,7 +90,9 @@ export interface Post {
 
   // Author relationship
   authorId: string;
-  // Note: We might include author details later for display
+  
+  // 🆕 Author details (from backend include)
+  author: PostAuthor;
 }
 
 // ==========================================

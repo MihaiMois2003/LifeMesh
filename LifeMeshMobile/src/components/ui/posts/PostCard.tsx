@@ -80,24 +80,45 @@ export const PostCard: React.FC<PostCardProps> = ({
         <View style={styles.header}>
           {/* Author Info */}
           <TouchableOpacity
-            style={styles.authorSection}
-            onPress={onAuthorPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {post.authorId.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.authorInfo}>
-              <Text style={styles.authorName}>
-                @{post.authorId.substring(0, 8)}...
-              </Text>
-              <Text style={styles.timeAgo}>
-                {formatTimeAgo(post.createdAt)}
-              </Text>
-            </View>
-          </TouchableOpacity>
+  style={styles.authorSection}
+  onPress={onAuthorPress}
+  activeOpacity={0.7}
+>
+  <View style={styles.avatar}>
+    {post.author.avatar ? (
+      <Image
+        source={{ uri: post.author.avatar }}
+        style={styles.avatarImage}
+        resizeMode="cover"
+      />
+    ) : (
+      <Text style={styles.avatarText}>
+        {(post.author.displayName || post.author.username).charAt(0).toUpperCase()}
+      </Text>
+    )}
+  </View>
+  <View style={styles.authorInfo}>
+    <View style={styles.authorNameContainer}>
+      <Text style={styles.authorName}>
+        {post.author.displayName || post.author.username}
+      </Text>
+      {post.author.isVerified && (
+        <Ionicons
+          name="checkmark-circle"
+          size={14}
+          color={Colors.accent[500]}
+          style={{ marginLeft: 4 }}
+        />
+      )}
+    </View>
+    <Text style={styles.username}>
+      @{post.author.username}
+    </Text>
+    <Text style={styles.timeAgo}>
+      {formatTimeAgo(post.createdAt)}
+    </Text>
+  </View>
+</TouchableOpacity>
 
           {/* Category Badge */}
           <View
@@ -270,9 +291,23 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.semibold as any,
-    color: Colors.text.primary,
+  fontWeight: Typography.fontWeights.semibold as any,
+  color: Colors.text.primary,
   },
+  avatarImage: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+},
+authorNameContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+username: {
+  fontSize: Typography.fontSizes.xs,
+  color: Colors.text.tertiary,
+  marginTop: 2,
+},
   timeAgo: {
     fontSize: Typography.fontSizes.xs,
     color: Colors.text.tertiary,

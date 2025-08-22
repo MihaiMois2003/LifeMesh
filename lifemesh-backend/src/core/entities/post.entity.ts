@@ -1,16 +1,21 @@
-// src/core/entities/post.entity.ts
+// src/core/entities/post.entity.ts (REPLACE ENTIRE FILE)
 import { Category, PostType, PostStatus } from "@prisma/client";
 
 /**
- * 🎯 POST ENTITY
- *
- * This represents a Post in our business domain.
- * It matches your Prisma schema but is independent of the database.
- *
- * Why separate this from Prisma?
- * - Business logic shouldn't depend on database implementation
- * - Easier to test (no database required)
- * - Can evolve independently
+ * 👤 AUTHOR DETAILS
+ * Represents the author information included with posts
+ */
+export interface PostAuthor {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatar: string | null;
+  isVerified: boolean;
+}
+
+/**
+ * 🎯 POST ENTITY (UPDATED)
+ * This represents a Post with author details included
  */
 export interface Post {
   // Core identification
@@ -29,7 +34,7 @@ export interface Post {
   address?: string | null;
   radius?: number | null; // Area coverage in meters
 
-  // Media (we'll implement this later)
+  // Media
   imageUrls?: any; // Prisma JsonValue type
 
   // Engagement metrics
@@ -48,14 +53,14 @@ export interface Post {
 
   // Author relationship
   authorId: string;
-  // Note: We don't include the full User object here to avoid circular dependencies
+  
+  // 🆕 Author details (from Prisma include)
+  author: PostAuthor;
 }
 
 /**
  * 🏗️ CREATE POST DATA
- *
- * This defines what data is needed to create a new post.
- * It's a subset of the full Post interface.
+ * For creating posts - doesn't include author details since they're added via include
  */
 export interface CreatePostData {
   title: string;
@@ -69,7 +74,7 @@ export interface CreatePostData {
   address?: string;
   radius?: number;
 
-  //Media
+  // Media
   imageUrls?: string[]; // Array of image URLs
 
   // Author is required
@@ -81,9 +86,7 @@ export interface CreatePostData {
 
 /**
  * 🔄 UPDATE POST DATA
- *
- * Defines what fields can be updated after creation.
- * Notice: authorId cannot be changed, createdAt is immutable.
+ * For updating posts - doesn't affect author relationship
  */
 export interface UpdatePostData {
   title?: string;
@@ -98,7 +101,7 @@ export interface UpdatePostData {
   address?: string | null;
   radius?: number | null;
 
-  // Media updates (future)
+  // Media updates
   imageUrls?: string[] | null;
 
   // Expiration updates
@@ -107,9 +110,7 @@ export interface UpdatePostData {
 
 /**
  * 📄 POST PREVIEW
- *
- * A lightweight version for lists/feeds.
- * Contains only essential info to display in a list.
+ * Lightweight version for lists/feeds
  */
 export interface PostPreview {
   id: string;

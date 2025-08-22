@@ -53,164 +53,103 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !content.trim()) {
-      Alert.alert(
-        "Missing Information",
-        "Please fill in both title and content."
-      );
-      return;
-    }
+  if (!title.trim() || !content.trim()) {
+    Alert.alert(
+      "Missing Information",
+      "Please fill in both title and content."
+    );
+    return;
+  }
 
-    console.log("🚀 Starting post creation...");
-    console.log("📝 Post data:", {
-      title: title.trim(),
-      content: content.trim(),
-      category,
-    });
-    console.log("📸 Images to upload:", images.length);
+  console.log("🚀 Starting post creation...");
+  console.log("📝 Post data:", {
+    title: title.trim(),
+    content: content.trim(),
+    category,
+    imageCount: images.length,
+  });
 
-    // Convert image URIs to File objects for upload
-    const imageFiles: File[] = [];
+  // ==========================================
+  // 🔧 FIXED: Upload images FIRST using the same method as your test
+  // ==========================================
+  let uploadedImageUrls: string[] = [];
 
+  if (images.length > 0) {
     try {
-      for (let i = 0; i < images.length; i++) {
-        const uri = images[i];
-        console.log(
-          `📸 Processing image ${i + 1}/${images.length}:`,
-          uri.substring(0, 50) + "..."
-        );
+      console.log("📸 Uploading images first...");
 
-        const response = await fetch(uri);
-        console.log(
-          `✅ Fetch response for image ${i + 1}:`,
-          response.status,
-          response.ok
-        );
-
-        const blob = await response.blob();
-        console.log(
-          `✅ Blob created for image ${i + 1}:`,
-          blob.size,
-          "bytes, type:",
-          blob.type
-        );
-
-        const file = new File([blob], `image_${Date.now()}_${i}.jpg`, {
-          type: "image/jpeg",
-        });
-        console.log(
-          `✅ File created for image ${i + 1}:`,
-          file.name,
-          file.size,
-          "bytes"
-        );
-
-        imageFiles.push(file);
-      }
-
-      console.log(
-        "✅ All images processed successfully. Total files:",
-        imageFiles.length
-      );
-    } catch (imageError) {
-      console.error("❌ Image processing error:", imageError);
-      Alert.alert("Image Error", "Failed to process images. Please try again.");
-      return;
-    }
-
-    console.log("🚀 Calling createPost with:", {
-      title: title.trim(),
-      content: content.trim(),
-      category,
-      type: images.length > 0 ? PostType.IMAGE : PostType.TEXT,
-      imageCount: imageFiles.length,
-    });
-
-    const result = await createPost({
-      title: title.trim(),
-      content: content.trim(),
-      category,
-      type: images.length > 0 ? PostType.IMAGE : PostType.TEXT,
-      images: imageFiles,
-    });
-
-    console.log("📊 Create post result:", result);
-
-    if (result.success) {
-      resetForm();
-      onClose();
-      Alert.alert("Success", "Your post has been created!");
-    } else {
-      console.error("❌ Post creation failed:", result.error);
-      Alert.alert("Error", result.error || "Failed to create post");
-    }
-  };
-
-  const isFormValid = title.trim() && content.trim();
-
-  const testImageUpload = async () => {
-    if (images.length === 0) {
-      Alert.alert("No Images", "Please select images first");
-      return;
-    }
-
-    if (!token) {
-      Alert.alert(
-        "Not authenticated",
-        "You must be signed in to upload images."
-      );
-      return;
-    }
-
-    console.log("🧪 Testing image upload only...");
-
-    try {
-      // Test the image upload endpoint directly
+      // Use the SAME FormData approach as your working test
       const formData = new FormData();
 
       for (let i = 0; i < images.length; i++) {
         const uri = images[i];
-        const response = await fetch(uri);
-        const blob = await response.blob();
+        console.log(`📸 Adding image ${i + 1}/${images.length}`);
 
-        // Create a proper FormData entry
+        // ✅ Use the exact same format as your working test
         formData.append("images", {
           uri: uri,
           type: "image/jpeg",
-          name: `image_${i}.jpg`,
+          name: `image_${Date.now()}_${i}.jpg`,
         } as any);
       }
 
-      console.log("📸 Uploading to /api/posts/upload-images...");
+      console.log("🚀 Making upload request...");
 
       const uploadResponse = await fetch(
         `${process.env.EXPO_PUBLIC_API_URL}/api/posts/upload-images`,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`, // Get token from useAuth
+            Authorization: `Bearer ${token}`,
+            // Don't set Content-Type - let FormData handle it
           },
           body: formData,
         }
       );
 
-      const result = await uploadResponse.json();
-      console.log("📊 Upload result:", result);
+      const uploadResult = await uploadResponse.json();
+      console.log("📊 Upload result:", uploadResult);
 
-      if (result.success) {
-        Alert.alert(
-          "Success",
-          `Images uploaded! URLs: ${result.data.imageUrls.join(", ")}`
-        );
-      } else {
-        Alert.alert("Upload Failed", result.error || "Unknown error");
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Image upload failed");
       }
-    } catch (err: unknown) {
-      console.error("❌ Upload test failed:", err);
-      const msg = err instanceof Error ? err.message : String(err);
-      Alert.alert("Error", msg);
+
+      uploadedImageUrls = uploadResult.data.imageUrls;
+      console.log("✅ Images uploaded successfully:", uploadedImageUrls);
+
+    } catch (imageError: any) {
+      console.error("❌ Image upload failed:", imageError);
+      Alert.alert("Image Error", imageError.message || "Failed to upload images");
+      return;
     }
-  };
+  }
+
+  // ==========================================
+  // 📝 Create post with uploaded image URLs (NOT File objects)
+  // ==========================================
+  console.log("📝 Creating post with image URLs...");
+
+  const result = await createPost({
+    title: title.trim(),
+    content: content.trim(),
+    category,
+    type: images.length > 0 ? PostType.IMAGE : PostType.TEXT,
+    imageUrls: uploadedImageUrls, // ✅ Pass URLs, not File objects
+  });
+
+  console.log("📊 Create post result:", result);
+
+  if (result.success) {
+    resetForm();
+    onClose();
+    Alert.alert("Success", "Your post has been created!");
+  } else {
+    console.error("❌ Post creation failed:", result.error);
+    Alert.alert("Error", result.error || "Failed to create post");
+  }
+};
+
+  const isFormValid = title.trim() && content.trim();
 
   return (
     <AbsoluteModal visible={visible} onClose={handleClose}>
@@ -245,19 +184,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           multiline
         />
         <ImageUploader images={images} onImagesChange={setImages} />
-        <TouchableOpacity
-          style={{
-            padding: 16,
-            backgroundColor: "blue",
-            borderRadius: 8,
-            margin: 16,
-          }}
-          onPress={testImageUpload}
-        >
-          <Text style={{ color: "white", textAlign: "center" }}>
-            🧪 Test Image Upload
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     </AbsoluteModal>
   );
