@@ -1,4 +1,4 @@
-// src/screens/FeedScreen.tsx (UPDATED - Add PostDetailModal)
+// src/screens/FeedScreen.tsx (UPDATED - Add Real Like Functionality)
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -26,8 +26,8 @@ import { useAuth } from "../features/auth/hooks/useAuth";
 import { UserRole } from "../shared/types/user";
 import { PostCard } from "../components/ui/posts/PostCard";
 import { CreatePostModal } from "../components/modals/CreatePostModal";
-import { PostDetailModal } from "../components/modals/PostDetailModal"; // 🆕 NEW
-import { Post, Category } from "../shared/types/posts";
+import { PostDetailModal } from "../components/modals/PostDetailModal";
+import { Post, Category, LikeStatus } from "../shared/types/posts";
 import {
   Colors,
   Typography,
@@ -59,7 +59,7 @@ export const FeedScreen = () => {
   >(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
   
-  // 🆕 NEW: Post Detail Modal State
+  // Post Detail Modal State
   const [showPostDetailModal, setShowPostDetailModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
@@ -79,15 +79,53 @@ export const FeedScreen = () => {
     }
   };
 
-  // 🆕 Check if current user is admin
+  // Check if current user is admin
   const isCurrentUserAdmin = user?.role === UserRole.ADMIN;
+
+  // ==========================================
+  // 👍 LIKE FUNCTIONALITY
+  // ==========================================
+
+  /**
+   * Update a post's like status in the posts array
+   */
+  const updatePostLikeStatus = useCallback((postId: string, likeStatus: LikeStatus) => {
+    updatePost(postId, {
+      likeCount: likeStatus.likeCount,
+      isLikedByCurrentUser: likeStatus.isLiked,
+    });
+
+    // Also update selected post if it's the same post
+    if (selectedPost && selectedPost.id === postId) {
+      setSelectedPost(prev => prev ? {
+        ...prev,
+        likeCount: likeStatus.likeCount,
+        isLikedByCurrentUser: likeStatus.isLiked,
+      } : null);
+    }
+  }, [updatePost, selectedPost]);
+
+  /**
+   * Handle like press from PostCard
+   */
+  const handleLikePress = useCallback((post: Post) => {
+    console.log("❤️ Like pressed from feed:", post.id);
+
+    // Animate FAB for feedback
+    fabScale.value = withSpring(0.9, { duration: 100 }, () => {
+      fabScale.value = withSpring(1, { duration: 200 });
+    });
+
+    // The actual like logic will be handled by the useLike hook in PostCard
+    // We just need to provide the callback to update our posts state
+  }, []);
 
   // ==========================================
   // 🎭 POST DETAIL MODAL HANDLERS
   // ==========================================
 
   /**
-   * 🎯 Handle post tap - show detail modal
+   * Handle post tap - show detail modal
    */
   const handlePostPress = (post: Post) => {
     console.log("📱 Opening post detail modal:", post.id);
@@ -96,7 +134,7 @@ export const FeedScreen = () => {
   };
 
   /**
-   * 🔒 Close post detail modal
+   * Close post detail modal
    */
   const handleClosePostDetail = () => {
     console.log("❌ Closing post detail modal");
@@ -108,7 +146,7 @@ export const FeedScreen = () => {
   };
 
   /**
-   * ✏️ Handle edit from modal
+   * Handle edit from modal
    */
   const handleEditFromModal = () => {
     if (!selectedPost) return;
@@ -132,7 +170,7 @@ export const FeedScreen = () => {
   };
 
   /**
-   * 🗑️ Handle delete from modal
+   * Handle delete from modal
    */
   const handleDeleteFromModal = () => {
     if (!selectedPost) return;
@@ -171,7 +209,7 @@ export const FeedScreen = () => {
   };
 
   /**
-   * ❤️ Handle like from modal
+   * Handle like from modal
    */
   const handleLikeFromModal = () => {
     if (!selectedPost) return;
@@ -183,11 +221,11 @@ export const FeedScreen = () => {
       fabScale.value = withSpring(1, { duration: 200 });
     });
     
-    // TODO: Implement actual like functionality
+    // The actual like logic will be handled by the useLike hook in PostDetailActions
   };
 
   /**
-   * 💬 Handle comment from modal
+   * Handle comment from modal
    */
   const handleCommentFromModal = () => {
     if (!selectedPost) return;
@@ -199,7 +237,7 @@ export const FeedScreen = () => {
   };
 
   /**
-   * 📤 Handle share from modal
+   * Handle share from modal
    */
   const handleShareFromModal = () => {
     if (!selectedPost) return;
@@ -239,15 +277,6 @@ export const FeedScreen = () => {
     console.log("👤 Author pressed:", authorId);
   };
 
-  const handleLikePress = (post: Post) => {
-    console.log("❤️ Like pressed from feed:", post.id);
-
-    // Animate FAB
-    fabScale.value = withSpring(0.9, { duration: 100 }, () => {
-      fabScale.value = withSpring(1, { duration: 200 });
-    });
-  };
-
   // ==========================================
   // 🎨 ANIMATED STYLES
   // ==========================================
@@ -276,9 +305,11 @@ export const FeedScreen = () => {
   const renderPost = ({ item, index }: { item: Post; index: number }) => (
     <PostCard
       post={item}
-      onPress={() => handlePostPress(item)} // 🆕 Opens modal now
+      onPress={() => handlePostPress(item)}
       onAuthorPress={() => handleAuthorPress(item.authorId)}
       onLikePress={() => handleLikePress(item)}
+      onLikeChange={(likeStatus) => updatePostLikeStatus(item.id, likeStatus)} // 🆕 NEW: Like callback
+      isLiked={item.isLikedByCurrentUser || false}
       animationDelay={index * 100}
     />
   );
@@ -429,7 +460,7 @@ export const FeedScreen = () => {
         onClose={() => setShowCreateModal(false)}
       />
 
-      {/* 🆕 NEW: Post Detail Modal */}
+      {/* Post Detail Modal */}
       <PostDetailModal
         visible={showPostDetailModal}
         post={selectedPost}
@@ -441,7 +472,7 @@ export const FeedScreen = () => {
         onLike={handleLikeFromModal}
         onComment={handleCommentFromModal}
         onShare={handleShareFromModal}
-        isLiked={false} // TODO: Check actual like status
+        isLiked={selectedPost?.isLikedByCurrentUser || false}
       />
 
       {/* Loading Overlay */}

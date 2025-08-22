@@ -1,4 +1,4 @@
-// src/shared/types/posts.ts
+// src/shared/types/posts.ts (REPLACE THE Post INTERFACE SECTION ONLY)
 // Complete types matching your Prisma schema exactly
 
 // ==========================================
@@ -51,7 +51,7 @@ export interface PostAuthor {
 }
 
 /**
- * 🎯 POST INTERFACE (UPDATED)
+ * 🎯 POST INTERFACE (UPDATED FOR LIKES)
  * Complete Post interface with author details
  */
 export interface Post {
@@ -74,9 +74,8 @@ export interface Post {
   // Media - array of Cloudinary URLs
   imageUrls?: string[] | null;
 
-  // Engagement metrics
-  upvotes: number;
-  downvotes: number;
+  // Engagement metrics - 🔄 UPDATED FOR LIKES
+  likeCount: number;  // 🆕 NEW: Simple like count instead of upvotes/downvotes
   viewCount: number;
 
   // AI metadata (future features)
@@ -91,8 +90,33 @@ export interface Post {
   // Author relationship
   authorId: string;
   
-  // 🆕 Author details (from backend include)
+  // Author details (from backend include)
   author: PostAuthor;
+  
+  // 🆕 Optional: Current user's like status (added by frontend logic)
+  isLikedByCurrentUser?: boolean;
+}
+
+// ==========================================
+// 👍 LIKE-RELATED TYPES
+// ==========================================
+
+/**
+ * Like status for a post
+ */
+export interface LikeStatus {
+  isLiked: boolean;
+  likeCount: number;
+}
+
+/**
+ * Individual like entity
+ */
+export interface Like {
+  id: string;
+  userId: string;
+  postId: string;
+  createdAt: string; // ISO date string
 }
 
 // ==========================================
@@ -149,6 +173,10 @@ export interface CreatePostApiRequest {
  * Data for updating an existing post
  * All fields optional since you might only update some
  */
+/**
+ * Data for updating an existing post
+ * All fields optional since you might only update some
+ */
 export interface UpdatePostRequest {
   title?: string;
   content?: string;
@@ -161,6 +189,10 @@ export interface UpdatePostRequest {
   radius?: number | null;
   imageUrls?: string[] | null;
   expiresAt?: Date | null;
+  
+  // 🆕 NEW: Like-related updates
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
 }
 
 // ==========================================
@@ -224,12 +256,11 @@ export interface PostWithMetadata extends Post {
   isOwn?: boolean; // Is this user's post
 
   // UI state
-  isLiked?: boolean; // Has user liked this post
   isBookmarked?: boolean; // Has user bookmarked this post
 }
 
 /**
- * Lightweight post for feed/list displays
+ * Lightweight post for feed/list displays - 🔄 UPDATED FOR LIKES
  * Reduces data transfer and improves performance
  */
 export interface PostPreview {
@@ -237,8 +268,7 @@ export interface PostPreview {
   title: string;
   content: string; // Might be truncated
   category: Category;
-  upvotes: number;
-  downvotes: number;
+  likeCount: number; // 🔄 CHANGED: Now uses likeCount instead of upvotes/downvotes
   viewCount: number;
   authorId: string;
   createdAt: string;

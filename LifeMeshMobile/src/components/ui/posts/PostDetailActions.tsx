@@ -1,4 +1,4 @@
-// src/components/ui/posts/PostDetailActions.tsx
+// src/components/ui/posts/PostDetailActions.tsx (UPDATED FOR LIKES)
 import React from "react";
 import {
   View,
@@ -32,7 +32,7 @@ interface PostDetailActionsProps {
 }
 
 /**
- * 👍 POST DETAIL ACTIONS
+ * 👍 POST DETAIL ACTIONS (UPDATED FOR LIKES)
  * 
  * Bottom action section of the post detail modal containing:
  * - Engagement metrics (likes, views, comments)
@@ -50,6 +50,8 @@ interface PostDetailActionsProps {
  * - Handles visual feedback for interactions
  * - Responsive button sizing
  * - Accessible touch targets
+ * 
+ * 🔄 UPDATED: Now uses likeCount instead of upvotes/downvotes
  */
 export const PostDetailActions: React.FC<PostDetailActionsProps> = ({
   post,
@@ -60,12 +62,12 @@ export const PostDetailActions: React.FC<PostDetailActionsProps> = ({
 }) => {
 
   // ==========================================
-  // 📊 ENGAGEMENT CALCULATIONS
+  // 📊 ENGAGEMENT CALCULATIONS (UPDATED)
   // ==========================================
 
-  const totalEngagement = post.upvotes + post.downvotes + post.viewCount;
+  const totalEngagement = post.likeCount + post.viewCount; // 🔄 CHANGED: Now uses likeCount
   const likePercentage = totalEngagement > 0 
-    ? Math.round((post.upvotes / totalEngagement) * 100) 
+    ? Math.round((post.likeCount / totalEngagement) * 100) // 🔄 CHANGED: Now uses likeCount
     : 0;
 
   // Format large numbers (1.2K, 5.3M, etc.)
@@ -91,10 +93,10 @@ export const PostDetailActions: React.FC<PostDetailActionsProps> = ({
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>
-              {formatNumber(post.upvotes)}
+              {formatNumber(post.likeCount)} {/* 🔄 CHANGED: Now uses likeCount */}
             </Text>
             <Text style={styles.statLabel}>
-              {post.upvotes === 1 ? 'like' : 'likes'}
+              {post.likeCount === 1 ? 'like' : 'likes'} {/* 🔄 CHANGED: Now uses likeCount */}
             </Text>
           </View>
 
@@ -235,7 +237,7 @@ export const PostDetailActions: React.FC<PostDetailActionsProps> = ({
         style={styles.hintContainer}
       >
         <Text style={styles.hintText}>
-          Double tap to like • Long press to save
+          Tap heart to like • Tap comment to engage
         </Text>
       </Animated.View>
     </View>

@@ -1,4 +1,4 @@
-// src/components/ui/posts/PostCard.tsx (FIXED VERSION - Original Design)
+// src/components/ui/posts/PostCard.tsx (UPDATED WITH LIKE HOOK)
 import React from "react";
 import {
   View,
@@ -17,7 +17,8 @@ import {
   BorderRadius,
   Shadows,
 } from "../../../shared/constants/theme";
-import { Post, CATEGORY_INFO } from "../../../shared/types/posts";
+import { Post, CATEGORY_INFO, LikeStatus } from "../../../shared/types/posts";
+import { useLike } from "../../../features/posts/hooks/useLike";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width - Spacing.xl * 2;
@@ -29,6 +30,7 @@ interface PostCardProps {
   onLikePress?: () => void;
   onCommentPress?: () => void;
   onSharePress?: () => void;
+  onLikeChange?: (likeStatus: LikeStatus) => void; // 🆕 NEW: Callback for like changes
   isLiked?: boolean;
   animationDelay?: number;
 }
@@ -40,10 +42,28 @@ export const PostCard: React.FC<PostCardProps> = ({
   onLikePress,
   onCommentPress,
   onSharePress,
+  onLikeChange, // 🆕 NEW
   isLiked = false,
   animationDelay = 0,
 }) => {
   const categoryInfo = CATEGORY_INFO[post.category];
+
+  // 🆕 NEW: Like hook with real functionality
+  const {
+    likeCount,
+    isLiked: isLikedFromHook,
+    isLiking,
+    toggleLike,
+  } = useLike({
+    postId: post.id,
+    initialLikeCount: post.likeCount,
+    initialIsLiked: post.isLikedByCurrentUser || isLiked,
+    onLikeChange, // Pass callback to update parent state
+  });
+
+  // Use hook values instead of props for like state
+  const currentLikeCount = likeCount;
+  const currentIsLiked = isLikedFromHook;
 
   // Format time ago (simple implementation)
   const formatTimeAgo = (dateString: string) => {
@@ -64,6 +84,19 @@ export const PostCard: React.FC<PostCardProps> = ({
   const truncateContent = (content: string, maxLength: number = 150) => {
     if (content.length <= maxLength) return content;
     return content.substring(0, maxLength).trim() + "...";
+  };
+
+  // 🆕 NEW: Handle like press with real API call
+  const handleLikePress = async () => {
+    console.log("❤️ Like button pressed:", post.id);
+    
+    // Call parent onLikePress for any additional logic (like animations)
+    if (onLikePress) {
+      onLikePress();
+    }
+
+    // Perform the actual like toggle
+    await toggleLike();
   };
 
   return (
@@ -188,22 +221,27 @@ export const PostCard: React.FC<PostCardProps> = ({
         {/* Actions */}
         <View style={styles.actions}>
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={onLikePress}
+            style={[
+              styles.actionButton,
+              isLiking && styles.actionButtonDisabled, // 🆕 Show loading state
+            ]}
+            onPress={handleLikePress}
             activeOpacity={0.7}
+            disabled={isLiking} // 🆕 Disable while loading
           >
             <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
+              name={currentIsLiked ? "heart" : "heart-outline"}
               size={20}
-              color={isLiked ? Colors.social.like : Colors.text.secondary}
+              color={currentIsLiked ? Colors.social.like : Colors.text.secondary}
             />
             <Text
               style={[
                 styles.actionText,
-                isLiked && { color: Colors.social.like },
+                currentIsLiked && { color: Colors.social.like },
+                isLiking && styles.actionTextDisabled, // 🆕 Show loading state
               ]}
             >
-              {post.upvotes}
+              {currentLikeCount} {/* 🔄 Use hook values */}
             </Text>
           </TouchableOpacity>
 
@@ -401,10 +439,17 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: Spacing.xs,
   },
+  // 🆕 NEW: Loading states
+  actionButtonDisabled: {
+    opacity: 0.6,
+  },
   actionText: {
     fontSize: Typography.fontSizes.sm,
     color: Colors.text.secondary,
     fontWeight: Typography.fontWeights.medium as any,
+  },
+  actionTextDisabled: {
+    opacity: 0.6,
   },
   viewsContainer: {
     flexDirection: "row",

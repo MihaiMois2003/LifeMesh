@@ -14,7 +14,7 @@ export interface PostAuthor {
 }
 
 /**
- * 🎯 POST ENTITY (UPDATED)
+ * 🎯 POST ENTITY (UPDATED FOR LIKES)
  * This represents a Post with author details included
  */
 export interface Post {
@@ -37,9 +37,8 @@ export interface Post {
   // Media
   imageUrls?: any; // Prisma JsonValue type
 
-  // Engagement metrics
-  upvotes: number;
-  downvotes: number;
+  // Engagement metrics - 🔄 UPDATED FOR LIKES
+  likeCount: number;  // 🆕 NEW: Simple like count instead of upvotes/downvotes
   viewCount: number;
 
   // AI metadata (future feature)
@@ -56,6 +55,9 @@ export interface Post {
   
   // 🆕 Author details (from Prisma include)
   author: PostAuthor;
+  
+  // 🆕 Optional: Current user's like status (added by business logic)
+  isLikedByCurrentUser?: boolean;
 }
 
 /**
@@ -110,15 +112,14 @@ export interface UpdatePostData {
 
 /**
  * 📄 POST PREVIEW
- * Lightweight version for lists/feeds
+ * Lightweight version for lists/feeds - 🔄 UPDATED FOR LIKES
  */
 export interface PostPreview {
   id: string;
   title: string;
   content: string; // Maybe truncated
   category: Category;
-  upvotes: number;
-  downvotes: number;
+  likeCount: number;  // 🔄 CHANGED: Now uses likeCount instead of upvotes/downvotes
   authorId: string;
   createdAt: Date;
 

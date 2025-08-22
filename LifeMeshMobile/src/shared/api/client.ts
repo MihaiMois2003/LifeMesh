@@ -1,22 +1,39 @@
+// src/shared/api/client.ts (REPLACE ENTIRE FILE)
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Create axios instance with base configuration
 export const apiClient = axios.create({
-  baseURL: "http://10.0.2.2:3000", // Should work with emulator
+  baseURL: "http://10.0.2.2:3000",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor
+// 🆕 SINGLE REQUEST INTERCEPTOR (with auth)
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Add auth token if available
+    try {
+      const token = await AsyncStorage.getItem("userToken");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.warn("Failed to get auth token:", error);
+    }
+
     console.log("🚀 REQUEST DETAILS:", {
       method: config.method?.toUpperCase(),
       url: `${config.baseURL}${config.url}`,
       fullURL: `${config.baseURL}${config.url}`,
-      headers: config.headers,
+      headers: {
+        ...config.headers,
+        Authorization: config.headers.Authorization
+          ? "Bearer [TOKEN]"
+          : "NO AUTH",
+      },
       data: config.data,
     });
     return config;

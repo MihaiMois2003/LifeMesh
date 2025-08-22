@@ -1,4 +1,4 @@
-// src/data/repositories/prisma-post.repository.ts
+// src/data/repositories/prisma-post.repository.ts (REPLACE ENTIRE FILE)
 import { PrismaClient, Category, PostStatus, PostType } from "@prisma/client";
 import {
   PostRepository,
@@ -14,16 +14,12 @@ import {
 } from "../../core/entities/post.entity";
 
 /**
- * 🗄️ PRISMA POST REPOSITORY
+ * 🗄️ PRISMA POST REPOSITORY (UPDATED FOR LIKES)
  *
  * This implements our PostRepository interface using Prisma and MySQL.
  * It translates our clean business interface into actual database operations.
  *
- * Benefits:
- * - Implements the interface contract exactly
- * - Uses Prisma for type-safe database access
- * - Handles all SQL complexity behind the interface
- * - Can be swapped for different database implementations
+ * 🔄 UPDATED: Now uses likeCount instead of upvotes/downvotes
  */
 export class PrismaPostRepository implements PostRepository {
   constructor(private prisma: PrismaClient) {}
@@ -33,154 +29,153 @@ export class PrismaPostRepository implements PostRepository {
   // ==========================================
 
   /**
- * Create a new post in the database
- * 🔧 FIXED: Now includes author details in response
- */
-async create(data: CreatePostData): Promise<Post> {
-  try {
-    const post = await this.prisma.post.create({
-      data: {
-        title: data.title,
-        content: data.content,
-        category: data.category,
-        type: data.type || PostType.TEXT,
-        status: PostStatus.ACTIVE,
+   * Create a new post in the database
+   * 🔄 UPDATED: Uses likeCount instead of upvotes/downvotes
+   */
+  async create(data: CreatePostData): Promise<Post> {
+    try {
+      const post = await this.prisma.post.create({
+        data: {
+          title: data.title,
+          content: data.content,
+          category: data.category,
+          type: data.type || PostType.TEXT,
+          status: PostStatus.ACTIVE,
 
-        // Handle imageUrls properly
-        imageUrls: data.imageUrls ?? undefined,
+          // Handle imageUrls properly
+          imageUrls: data.imageUrls ?? undefined,
 
-        // Location data (optional)
-        address: data.address ?? undefined,
-        radius: data.radius ?? undefined,
-        latitude: data.latitude ?? undefined,
-        longitude: data.longitude ?? undefined,
+          // Location data (optional)
+          address: data.address ?? undefined,
+          radius: data.radius ?? undefined,
+          latitude: data.latitude ?? undefined,
+          longitude: data.longitude ?? undefined,
 
-        // Author
-        authorId: data.authorId,
+          // Author
+          authorId: data.authorId,
 
-        // Timestamps
-        expiresAt: data.expiresAt || null,
+          // Timestamps
+          expiresAt: data.expiresAt || null,
 
-        // Initialize engagement metrics
-        upvotes: 0,
-        downvotes: 0,
-        viewCount: 0,
-      },
-      // 🆕 Include author details
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-            isVerified: true,
+          // 🔄 UPDATED: Initialize engagement metrics with likeCount
+          likeCount: 0,  // 🆕 NEW: Like count instead of upvotes/downvotes
+          viewCount: 0,
+        },
+        // Include author details
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+              isVerified: true,
+            }
           }
         }
-      }
-    });
+      });
 
-    return post;
-  } catch (error) {
-    console.error("Error creating post:", error);
-    throw new Error("Failed to create post");
+      return post;
+    } catch (error) {
+      console.error("Error creating post:", error);
+      throw new Error("Failed to create post");
+    }
   }
-}
-
-/**
- * Find a post by its ID
- * 🔧 FIXED: Now includes author details
- */
-async findById(id: string): Promise<Post | null> {
-  try {
-    const post = await this.prisma.post.findUnique({
-      where: { id },
-      // 🆕 Include author details
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-            isVerified: true,
-          }
-        }
-      }
-    });
-
-    return post;
-  } catch (error) {
-    console.error("Error finding post by ID:", error);
-    throw new Error("Failed to find post");
-  }
-}
 
   /**
- * Update an existing post
- * 🔧 FIXED: Now includes author details in response
- */
-async update(id: string, data: UpdatePostData): Promise<Post> {
-  try {
-    // First check if post exists
-    const existingPost = await this.findById(id);
-    if (!existingPost) {
-      throw new Error("Post not found");
-    }
-
-    const updatedPost = await this.prisma.post.update({
-      where: { id },
-      data: {
-        ...(data.title !== undefined && { title: data.title }),
-        ...(data.content !== undefined && { content: data.content }),
-        ...(data.category !== undefined && { category: data.category }),
-        ...(data.type !== undefined && { type: data.type }),
-        ...(data.status !== undefined && { status: data.status }),
-        // Fix for imageUrls and other fields:
-        ...(data.imageUrls !== undefined && {
-          imageUrls: data.imageUrls ?? undefined,
-        }),
-        ...(data.latitude !== undefined && {
-          latitude: data.latitude ?? undefined,
-        }),
-        ...(data.longitude !== undefined && {
-          longitude: data.longitude ?? undefined,
-        }),
-        ...(data.address !== undefined && {
-          address: data.address ?? undefined,
-        }),
-        ...(data.radius !== undefined && {
-          radius: data.radius ?? undefined,
-        }),
-        ...(data.expiresAt !== undefined && {
-          expiresAt: data.expiresAt ?? undefined,
-        }),
-
-        // updatedAt is automatically handled by Prisma
-      },
-      // 🆕 Include author details
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-            isVerified: true,
+   * Find a post by its ID
+   * Includes author details
+   */
+  async findById(id: string): Promise<Post | null> {
+    try {
+      const post = await this.prisma.post.findUnique({
+        where: { id },
+        // Include author details
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+              isVerified: true,
+            }
           }
         }
-      }
-    });
+      });
 
-    return updatedPost;
-  } catch (error) {
-    console.error("Error updating post:", error);
-    if (error instanceof Error && error.message === "Post not found") {
-      throw error;
+      return post;
+    } catch (error) {
+      console.error("Error finding post by ID:", error);
+      throw new Error("Failed to find post");
     }
-    throw new Error("Failed to update post");
   }
-}
+
+  /**
+   * Update an existing post
+   * Includes author details in response
+   */
+  async update(id: string, data: UpdatePostData): Promise<Post> {
+    try {
+      // First check if post exists
+      const existingPost = await this.findById(id);
+      if (!existingPost) {
+        throw new Error("Post not found");
+      }
+
+      const updatedPost = await this.prisma.post.update({
+        where: { id },
+        data: {
+          ...(data.title !== undefined && { title: data.title }),
+          ...(data.content !== undefined && { content: data.content }),
+          ...(data.category !== undefined && { category: data.category }),
+          ...(data.type !== undefined && { type: data.type }),
+          ...(data.status !== undefined && { status: data.status }),
+          // Fix for imageUrls and other fields:
+          ...(data.imageUrls !== undefined && {
+            imageUrls: data.imageUrls ?? undefined,
+          }),
+          ...(data.latitude !== undefined && {
+            latitude: data.latitude ?? undefined,
+          }),
+          ...(data.longitude !== undefined && {
+            longitude: data.longitude ?? undefined,
+          }),
+          ...(data.address !== undefined && {
+            address: data.address ?? undefined,
+          }),
+          ...(data.radius !== undefined && {
+            radius: data.radius ?? undefined,
+          }),
+          ...(data.expiresAt !== undefined && {
+            expiresAt: data.expiresAt ?? undefined,
+          }),
+
+          // updatedAt is automatically handled by Prisma
+        },
+        // Include author details
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+              isVerified: true,
+            }
+          }
+        }
+      });
+
+      return updatedPost;
+    } catch (error) {
+      console.error("Error updating post:", error);
+      if (error instanceof Error && error.message === "Post not found") {
+        throw error;
+      }
+      throw new Error("Failed to update post");
+    }
+  }
 
   /**
    * Delete a post by ID
@@ -210,100 +205,99 @@ async update(id: string, data: UpdatePostData): Promise<Post> {
   // ==========================================
 
   /**
- * Find multiple posts with filtering and pagination
- * This is the main method that powers your feed!
- * 
- * 🔧 FIXED: Now includes author details with each post
- */
-async findMany(options: FindPostsOptions = {}): Promise<PostsResult> {
-  try {
-    // Build the where clause for filtering
-    const whereClause = this.buildWhereClause(options);
+   * Find multiple posts with filtering and pagination
+   * This is the main method that powers your feed!
+   * Includes author details with each post
+   */
+  async findMany(options: FindPostsOptions = {}): Promise<PostsResult> {
+    try {
+      // Build the where clause for filtering
+      const whereClause = this.buildWhereClause(options);
 
-    // Build the orderBy clause for sorting
-    const orderByClause = this.buildOrderByClause(options.sortBy);
+      // Build the orderBy clause for sorting
+      const orderByClause = this.buildOrderByClause(options.sortBy);
 
-    // Get total count for pagination (before applying skip/take)
-    const total = await this.prisma.post.count({
-      where: whereClause,
-    });
+      // Get total count for pagination (before applying skip/take)
+      const total = await this.prisma.post.count({
+        where: whereClause,
+      });
 
-    // ✅ FIXED: Include author details with each post
-    const posts = await this.prisma.post.findMany({
-      where: whereClause,
-      orderBy: orderByClause,
-      skip: options.skip || 0,
-      take: options.take || 20,
-      
-      // 🆕 Include author information
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-            isVerified: true,
-            // Don't include sensitive fields like email, password
+      // Include author details with each post
+      const posts = await this.prisma.post.findMany({
+        where: whereClause,
+        orderBy: orderByClause,
+        skip: options.skip || 0,
+        take: options.take || 20,
+        
+        // Include author information
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+              isVerified: true,
+              // Don't include sensitive fields like email, password
+            }
           }
         }
-      }
-    });
+      });
 
-    // Calculate pagination info
-    const pageSize = options.take || 20;
-    const currentPage = Math.floor((options.skip || 0) / pageSize) + 1;
+      // Calculate pagination info
+      const pageSize = options.take || 20;
+      const currentPage = Math.floor((options.skip || 0) / pageSize) + 1;
 
-    return {
-      posts,
-      total,
-      hasMore: (options.skip || 0) + posts.length < total,
-      page: currentPage,
-      pageSize,
-    };
-  } catch (error) {
-    console.error("Error finding posts:", error);
-    throw new Error("Failed to find posts");
+      return {
+        posts,
+        total,
+        hasMore: (options.skip || 0) + posts.length < total,
+        page: currentPage,
+        pageSize,
+      };
+    } catch (error) {
+      console.error("Error finding posts:", error);
+      throw new Error("Failed to find posts");
+    }
   }
-}
 
   /**
- * Find posts by a specific author
- * 🔧 FIXED: Now includes author details
- */
-async findByAuthor(
-  authorId: string,
-  options: PaginationOptions = {}
-): Promise<Post[]> {
-  try {
-    const posts = await this.prisma.post.findMany({
-      where: {
-        authorId,
-        status: PostStatus.ACTIVE, // Only show active posts
-      },
-      orderBy: { createdAt: "desc" }, // Newest first
-      skip: options.skip || 0,
-      take: options.take || 20,
-      // 🆕 Include author details
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
-            isVerified: true,
+   * Find posts by a specific author
+   * Includes author details
+   */
+  async findByAuthor(
+    authorId: string,
+    options: PaginationOptions = {}
+  ): Promise<Post[]> {
+    try {
+      const posts = await this.prisma.post.findMany({
+        where: {
+          authorId,
+          status: PostStatus.ACTIVE, // Only show active posts
+        },
+        orderBy: { createdAt: "desc" }, // Newest first
+        skip: options.skip || 0,
+        take: options.take || 20,
+        // Include author details
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatar: true,
+              isVerified: true,
+            }
           }
         }
-      }
-    });
+      });
 
-    return posts;
-  } catch (error) {
-    console.error("Error finding posts by author:", error);
-    throw new Error("Failed to find posts by author");
+      return posts;
+    } catch (error) {
+      console.error("Error finding posts by author:", error);
+      throw new Error("Failed to find posts by author");
+    }
   }
-}
 
   /**
    * Find nearby posts (simplified version for now)
@@ -419,13 +413,14 @@ async findByAuthor(
 
   /**
    * Builds Prisma orderBy clause from sort option
+   * 🔄 UPDATED: Now uses likeCount instead of upvotes
    */
   private buildOrderByClause(sortBy?: string) {
     switch (sortBy) {
       case "oldest":
         return { createdAt: "asc" as const };
       case "mostLiked":
-        return { upvotes: "desc" as const };
+        return { likeCount: "desc" as const }; // 🔄 CHANGED: Now uses likeCount
       case "mostViewed":
         return { viewCount: "desc" as const };
       case "newest":
