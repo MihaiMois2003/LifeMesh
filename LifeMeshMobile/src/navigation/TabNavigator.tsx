@@ -1,4 +1,4 @@
-// src/navigation/TabNavigator.tsx (Fixed)
+// src/navigation/TabNavigator.tsx
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text, StyleSheet } from "react-native";
@@ -7,27 +7,21 @@ import { Ionicons } from "@expo/vector-icons";
 
 // Import screens
 import { ProfileScreen } from "../screens/ProfileScreen";
+import { FeedScreen } from "../screens/FeedScreen";
 import { EmulatorFriendlyMap as MapScreen } from "../screens/EmulatorFriendlyMap";
 
-// Placeholder screens for now
-const HomeScreen = () => (
-  <View style={styles.placeholderContainer}>
-    <Text style={styles.placeholderText}>🏠 Home Screen</Text>
-    <Text style={styles.placeholderSubtext}>(Future Development)</Text>
-  </View>
-);
-
+// Placeholder screens
 const ChatScreen = () => (
   <View style={styles.placeholderContainer}>
     <Text style={styles.placeholderText}>💬 Chat Screen</Text>
-    <Text style={styles.placeholderSubtext}>(Future Development)</Text>
+    <Text style={styles.placeholderSubtext}>(Coming Soon)</Text>
   </View>
 );
 
 const NotificationsScreen = () => (
   <View style={styles.placeholderContainer}>
     <Text style={styles.placeholderText}>🔔 Notifications Screen</Text>
-    <Text style={styles.placeholderSubtext}>(Future Development)</Text>
+    <Text style={styles.placeholderSubtext}>(Coming Soon)</Text>
   </View>
 );
 
@@ -80,7 +74,7 @@ export const TabNavigator = () => {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={FeedScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Chat" component={ChatScreen} />
       <Tab.Screen name="Notifications" component={NotificationsScreen} />

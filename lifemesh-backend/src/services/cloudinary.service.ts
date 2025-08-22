@@ -1,4 +1,4 @@
-// src/services/cloudinary.service.ts (Updated - Optional Configuration)
+// src/services/cloudinary.service.ts
 import { v2 as cloudinary } from "cloudinary";
 import { ImageUploadService } from "../core/use-cases/update-avatar.use-case";
 
@@ -7,11 +7,10 @@ export class CloudinaryService implements ImageUploadService {
 
   constructor() {
     try {
-      // 🔄 Try to configure Cloudinary, but don't fail if missing
       this.configureCloudinary();
     } catch (error) {
       console.warn(
-        "⚠️ Cloudinary not configured. Avatar upload will be disabled."
+        "⚠️ Cloudinary not configured. Image upload will be disabled."
       );
       this.isConfigured = false;
     }
@@ -22,7 +21,6 @@ export class CloudinaryService implements ImageUploadService {
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-    // ✅ Only configure if all values exist
     if (cloudName && apiKey && apiSecret) {
       cloudinary.config({
         cloud_name: cloudName,
@@ -33,14 +31,13 @@ export class CloudinaryService implements ImageUploadService {
       console.log("✅ Cloudinary configured successfully");
     } else {
       console.log(
-        "ℹ️ Cloudinary configuration missing. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env to enable avatar uploads."
+        "ℹ️ Cloudinary configuration missing. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env"
       );
       this.isConfigured = false;
     }
   }
 
-  async uploadImage(file: File, folder: string): Promise<string> {
-    // 🚫 Check if Cloudinary is configured
+  async uploadImage(file: File, folder: string = "avatars"): Promise<string> {
     if (!this.isConfigured) {
       throw new Error(
         "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file."
@@ -48,42 +45,43 @@ export class CloudinaryService implements ImageUploadService {
     }
 
     try {
-      // 📁 Convert File to Buffer
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // ☁️ Upload to Cloudinary
       const result = await new Promise<any>((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: `lifemesh/${folder}`,
-              transformation: [
-                {
-                  width: 400,
-                  height: 400,
-                  crop: "fill",
-                  gravity: "face",
-                },
-                {
-                  quality: "auto",
-                  format: "auto",
-                },
-              ],
-              context: {
-                alt: `${folder} image`,
-                uploaded_at: new Date().toISOString(),
-              },
-            },
-            (error, result) => {
-              if (error) {
-                console.error("Cloudinary upload error:", error);
-                reject(new Error(`Image upload failed: ${error.message}`));
-              } else {
-                resolve(result);
+        const uploadOptions =
+          folder === "posts"
+            ? {
+                folder: `lifemesh/${folder}`,
+                transformation: [
+                  { width: 1200, height: 1200, crop: "limit" },
+                  { quality: "auto", format: "auto" },
+                ],
+                public_id: `post_${Date.now()}_${Math.random()
+                  .toString(36)
+                  .substr(2, 9)}`,
               }
+            : {
+                folder: `lifemesh/${folder}`,
+                transformation: [
+                  { width: 400, height: 400, crop: "fill", gravity: "face" },
+                  { quality: "auto", format: "auto" },
+                ],
+                context: {
+                  alt: `${folder} image`,
+                  uploaded_at: new Date().toISOString(),
+                },
+              };
+
+        cloudinary.uploader
+          .upload_stream(uploadOptions, (error, result) => {
+            if (error) {
+              console.error("Cloudinary upload error:", error);
+              reject(new Error(`Image upload failed: ${error.message}`));
+            } else {
+              resolve(result);
             }
-          )
+          })
           .end(buffer);
       });
 
@@ -94,11 +92,14 @@ export class CloudinaryService implements ImageUploadService {
     }
   }
 
+  async uploadPostImage(file: File): Promise<string> {
+    return this.uploadImage(file, "posts");
+  }
+
   async deleteImage(imageUrl: string): Promise<void> {
-    // 🚫 Check if Cloudinary is configured
     if (!this.isConfigured) {
       console.warn("Cloudinary not configured. Cannot delete image:", imageUrl);
-      return; // Silently skip deletion if not configured
+      return;
     }
 
     try {
@@ -135,7 +136,6 @@ export class CloudinaryService implements ImageUploadService {
     }
   }
 
-  // 🆕 NEW: Method to check if service is ready
   isReady(): boolean {
     return this.isConfigured;
   }

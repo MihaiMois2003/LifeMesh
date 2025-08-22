@@ -19,7 +19,7 @@ import {
   Spacing,
   BorderRadius,
   Shadows,
-} from "../../shared/constants/theme";
+} from "../../../shared/constants/theme";
 
 interface AnimatedButtonProps {
   title: string;

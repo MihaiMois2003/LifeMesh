@@ -21,7 +21,7 @@ import {
   Spacing,
   BorderRadius,
   Shadows,
-} from "../../shared/constants/theme";
+} from "../../../shared/constants/theme";
 
 interface AnimatedInputProps extends TextInputProps {
   label: string;

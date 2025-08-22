@@ -19,8 +19,8 @@ import {
   BorderRadius,
   Shadows,
 } from "../../shared/constants/theme";
-import { Card } from "../ui/common/Card";
-import { AnimatedPressable } from "../ui/AnimatedPressable";
+import { Card } from "../ui/common/SettingsCard";
+import { AnimatedPressable } from "../ui/animated/AnimatedPressable";
 
 interface SettingsScreenProps {
   isVisible: boolean;

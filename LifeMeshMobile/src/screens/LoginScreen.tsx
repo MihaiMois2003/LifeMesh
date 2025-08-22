@@ -17,8 +17,8 @@ import Animated, {
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenTransition } from "../components/common/ScreenTransition";
-import { AnimatedInput } from "../components/ui/AnimatedInput";
-import { AnimatedButton } from "../components/ui/AnimatedButton";
+import { AnimatedInput } from "../components/ui/animated/AnimatedInput";
+import { AnimatedButton } from "../components/ui/animated/AnimatedButton";
 import { useAuth } from "../features/auth/hooks/useAuth";
 import {
   Colors,

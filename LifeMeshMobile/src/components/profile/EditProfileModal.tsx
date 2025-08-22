@@ -28,9 +28,9 @@ import {
   BorderRadius,
   Shadows,
 } from "../../shared/constants/theme";
-import { AnimatedPressable } from "../ui/AnimatedPressable";
-import { AnimatedInput } from "../ui/AnimatedInput";
-import { AnimatedButton } from "../ui/AnimatedButton";
+import { AnimatedPressable } from "../ui/animated/AnimatedPressable";
+import { AnimatedInput } from "../ui/animated/AnimatedInput";
+import { AnimatedButton } from "../ui/animated/AnimatedButton";
 
 interface User {
   id: string;
