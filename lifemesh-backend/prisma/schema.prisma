@@ -43,7 +43,7 @@ model User {
   // Relations
   posts       Post[]
   comments    Comment[]
-  votes       Vote[]
+  likes       Like[]      // 🆕 NEW: User can like many posts
   badges      UserBadge[]
   
   @@map("users")
@@ -68,9 +68,8 @@ model Post {
   // Media
   imageUrls   Json?      // Array of image URLs
   
-  // Engagement
-  upvotes     Int        @default(0)
-  downvotes   Int        @default(0)
+  // Engagement - 🔄 CHANGED: Simple likes instead of upvotes/downvotes
+  likeCount   Int        @default(0)  // 🆕 NEW: Total likes count (cached for performance)
   viewCount   Int        @default(0)
   
   // AI metadata
@@ -86,7 +85,7 @@ model Post {
   author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId    String
   comments    Comment[]
-  votes       Vote[]
+  likes       Like[]     // 🆕 NEW: Post can have many likes
   
   // Indexes for performance
   @@index([category, status, createdAt])
@@ -95,11 +94,27 @@ model Post {
   @@map("posts")
 }
 
+// 🆕 NEW: Like model for simple like/unlike functionality
+model Like {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  
+  // Prevent duplicate likes - one user can only like a post once
+  @@unique([userId, postId])
+  @@map("likes")
+}
+
 model Comment {
   id        String   @id @default(uuid())
   content   String   @db.Text
   
-  // Engagement
+  // Engagement - 🔄 FUTURE: We'll convert these to likes later when we implement comment likes
   upvotes   Int      @default(0)
   downvotes Int      @default(0)
   
@@ -120,24 +135,6 @@ model Comment {
   
   @@index([postId, createdAt])
   @@map("comments")
-}
-
-model Vote {
-  id       String   @id @default(uuid())
-  type     VoteType
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  
-  // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId   String
-  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId   String
-  
-  // Prevent duplicate votes
-  @@unique([userId, postId])
-  @@map("votes")
 }
 
 model Badge {
@@ -200,12 +197,9 @@ enum PostStatus {
   REPORTED
 }
 
-enum VoteType {
-  UPVOTE
-  DOWNVOTE
-}
-
 enum UserRole {
   USER
   ADMIN
 }
+
+// 🗑️ REMOVED: Vote model and VoteType enum (replaced with simple likes)

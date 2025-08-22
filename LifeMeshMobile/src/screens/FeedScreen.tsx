@@ -1,4 +1,4 @@
-// src/screens/FeedScreen.tsx
+// src/screens/FeedScreen.tsx (UPDATED - Add PostDetailModal)
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -19,12 +19,14 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  interpolateColor,
 } from "react-native-reanimated";
 
 import { usePosts } from "../features/posts/hooks/usePosts";
+import { useAuth } from "../features/auth/hooks/useAuth";
+import { UserRole } from "../shared/types/user";
 import { PostCard } from "../components/ui/posts/PostCard";
 import { CreatePostModal } from "../components/modals/CreatePostModal";
+import { PostDetailModal } from "../components/modals/PostDetailModal"; // 🆕 NEW
 import { Post, Category } from "../shared/types/posts";
 import {
   Colors,
@@ -36,6 +38,8 @@ import {
 
 export const FeedScreen = () => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+
   const {
     posts,
     isLoading,
@@ -46,12 +50,18 @@ export const FeedScreen = () => {
     loadMorePosts,
     refreshPosts,
     clearPostsError,
+    updatePost,
+    deletePost,
   } = usePosts();
 
   const [selectedCategory, setSelectedCategory] = useState<
     Category | undefined
   >(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // 🆕 NEW: Post Detail Modal State
+  const [showPostDetailModal, setShowPostDetailModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   // Animation values
   const headerOpacity = useSharedValue(1);
@@ -68,6 +78,141 @@ export const FeedScreen = () => {
       showError(result.error || "Failed to load posts");
     }
   };
+
+  // 🆕 Check if current user is admin
+  const isCurrentUserAdmin = user?.role === UserRole.ADMIN;
+
+  // ==========================================
+  // 🎭 POST DETAIL MODAL HANDLERS
+  // ==========================================
+
+  /**
+   * 🎯 Handle post tap - show detail modal
+   */
+  const handlePostPress = (post: Post) => {
+    console.log("📱 Opening post detail modal:", post.id);
+    setSelectedPost(post);
+    setShowPostDetailModal(true);
+  };
+
+  /**
+   * 🔒 Close post detail modal
+   */
+  const handleClosePostDetail = () => {
+    console.log("❌ Closing post detail modal");
+    setShowPostDetailModal(false);
+    // Clear selected post after animation completes
+    setTimeout(() => {
+      setSelectedPost(null);
+    }, 300);
+  };
+
+  /**
+   * ✏️ Handle edit from modal
+   */
+  const handleEditFromModal = () => {
+    if (!selectedPost) return;
+    
+    console.log("✏️ Edit post from modal:", selectedPost.id);
+    
+    const isOwner = user?.id === selectedPost.authorId;
+    const reason = isOwner ? "as owner" : "as admin";
+    
+    // Close modal first
+    handleClosePostDetail();
+    
+    // Show edit functionality (future implementation)
+    setTimeout(() => {
+      Alert.alert(
+        "Edit Post", 
+        `Edit functionality coming soon!\n\nYou can edit this post ${reason}.\n\nPost: "${selectedPost.title}"`,
+        [{ text: "OK" }]
+      );
+    }, 400);
+  };
+
+  /**
+   * 🗑️ Handle delete from modal
+   */
+  const handleDeleteFromModal = () => {
+    if (!selectedPost) return;
+    
+    const isOwner = user?.id === selectedPost.authorId;
+    const reason = isOwner ? "You are the author of this post." : "You have admin privileges.";
+    
+    Alert.alert(
+      "Delete Post",
+      `Are you sure you want to delete "${selectedPost.title}"?\n\n${reason}\n\nThis action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!selectedPost) return;
+            
+            console.log("🗑️ Deleting post from modal:", selectedPost.id, isOwner ? "(as owner)" : "(as admin)");
+            
+            // Close modal first
+            handleClosePostDetail();
+            
+            // Perform deletion
+            const result = await deletePost(selectedPost.id);
+            
+            if (result.success) {
+              Alert.alert("Success", "Post deleted successfully");
+            } else {
+              Alert.alert("Error", result.error || "Failed to delete post");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  /**
+   * ❤️ Handle like from modal
+   */
+  const handleLikeFromModal = () => {
+    if (!selectedPost) return;
+    
+    console.log("❤️ Like post from modal:", selectedPost.id);
+    
+    // Animate FAB even from modal
+    fabScale.value = withSpring(0.9, { duration: 100 }, () => {
+      fabScale.value = withSpring(1, { duration: 200 });
+    });
+    
+    // TODO: Implement actual like functionality
+  };
+
+  /**
+   * 💬 Handle comment from modal
+   */
+  const handleCommentFromModal = () => {
+    if (!selectedPost) return;
+    
+    console.log("💬 Comment on post from modal:", selectedPost.id);
+    
+    // TODO: Implement comment functionality
+    Alert.alert("Coming Soon", "Comment functionality will be added soon!");
+  };
+
+  /**
+   * 📤 Handle share from modal
+   */
+  const handleShareFromModal = () => {
+    if (!selectedPost) return;
+    
+    console.log("📤 Share post from modal:", selectedPost.id);
+    
+    // TODO: Implement share functionality
+    Alert.alert("Coming Soon", "Share functionality will be added soon!");
+  };
+
+  // ==========================================
+  // 🎯 EXISTING HANDLERS (Simplified)
+  // ==========================================
 
   const handleRefresh = useCallback(async () => {
     const result = await refreshPosts();
@@ -89,19 +234,13 @@ export const FeedScreen = () => {
     Alert.alert("Error", message, [{ text: "OK", onPress: clearPostsError }]);
   };
 
-  const handlePostPress = (post: Post) => {
-    // Navigate to post detail (implement later)
-    console.log("Post pressed:", post.id);
-  };
-
   const handleAuthorPress = (authorId: string) => {
     // Navigate to author profile (implement later)
-    console.log("Author pressed:", authorId);
+    console.log("👤 Author pressed:", authorId);
   };
 
   const handleLikePress = (post: Post) => {
-    // Implement like functionality (future)
-    console.log("Like pressed:", post.id);
+    console.log("❤️ Like pressed from feed:", post.id);
 
     // Animate FAB
     fabScale.value = withSpring(0.9, { duration: 100 }, () => {
@@ -109,7 +248,10 @@ export const FeedScreen = () => {
     });
   };
 
-  // Animated styles
+  // ==========================================
+  // 🎨 ANIMATED STYLES
+  // ==========================================
+
   const headerStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
   }));
@@ -117,6 +259,10 @@ export const FeedScreen = () => {
   const fabStyle = useAnimatedStyle(() => ({
     transform: [{ scale: fabScale.value }],
   }));
+
+  // ==========================================
+  // 🎭 RENDER FUNCTIONS
+  // ==========================================
 
   // Filter categories for display
   const categories = [
@@ -130,7 +276,7 @@ export const FeedScreen = () => {
   const renderPost = ({ item, index }: { item: Post; index: number }) => (
     <PostCard
       post={item}
-      onPress={() => handlePostPress(item)}
+      onPress={() => handlePostPress(item)} // 🆕 Opens modal now
       onAuthorPress={() => handleAuthorPress(item.authorId)}
       onLikePress={() => handleLikePress(item)}
       animationDelay={index * 100}
@@ -281,6 +427,21 @@ export const FeedScreen = () => {
       <CreatePostModal
         visible={showCreateModal}
         onClose={() => setShowCreateModal(false)}
+      />
+
+      {/* 🆕 NEW: Post Detail Modal */}
+      <PostDetailModal
+        visible={showPostDetailModal}
+        post={selectedPost}
+        currentUserId={user?.id}
+        isCurrentUserAdmin={isCurrentUserAdmin}
+        onClose={handleClosePostDetail}
+        onEdit={handleEditFromModal}
+        onDelete={handleDeleteFromModal}
+        onLike={handleLikeFromModal}
+        onComment={handleCommentFromModal}
+        onShare={handleShareFromModal}
+        isLiked={false} // TODO: Check actual like status
       />
 
       {/* Loading Overlay */}

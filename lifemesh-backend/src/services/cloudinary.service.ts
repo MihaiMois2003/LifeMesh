@@ -119,6 +119,35 @@ export class CloudinaryService implements ImageUploadService {
     }
   }
 
+  /**
+ * Delete multiple images from Cloudinary
+ * Used when deleting posts with multiple images
+ */
+async deleteImages(imageUrls: string[]): Promise<void> {
+  if (!this.isConfigured) {
+    console.warn("Cloudinary not configured. Cannot delete images:", imageUrls.length);
+    return;
+  }
+
+  console.log(`🗑️ Deleting ${imageUrls.length} images from Cloudinary...`);
+
+  // Delete images in parallel for better performance
+  const deletionPromises = imageUrls.map(async (imageUrl, index) => {
+    try {
+      await this.deleteImage(imageUrl);
+      console.log(`✅ Deleted image ${index + 1}/${imageUrls.length}`);
+    } catch (error) {
+      console.warn(`⚠️ Failed to delete image ${index + 1}:`, error);
+      // Don't throw - we want to try deleting other images even if one fails
+    }
+  });
+
+  // Wait for all deletions to complete (or fail)
+  await Promise.allSettled(deletionPromises);
+  
+  console.log(`✅ Finished deleting images from Cloudinary`);
+}
+
   private extractPublicId(cloudinaryUrl: string): string | null {
     try {
       const urlParts = cloudinaryUrl.split("/");
