@@ -1,6 +1,11 @@
-// src/shared/api/client.ts (REPLACE ENTIRE FILE)
-import axios from "axios";
+// src/shared/api/client.ts
+import axios, {
+  AxiosRequestConfig,
+  AxiosRequestHeaders,
+  InternalAxiosRequestConfig,
+} from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { store } from "../../store/store";
 
 // Create axios instance with base configuration
 export const apiClient = axios.create({
@@ -11,37 +16,32 @@ export const apiClient = axios.create({
   },
 });
 
-// 🆕 SINGLE REQUEST INTERCEPTOR (with auth)
+// 🔑 Request interceptor: attach token
 apiClient.interceptors.request.use(
-  async (config) => {
-    // Add auth token if available
-    try {
-      const token = await AsyncStorage.getItem("userToken");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.warn("Failed to get auth token:", error);
+  async (config: InternalAxiosRequestConfig) => {
+    let token: string | null = null;
+
+    // 1️⃣ First, try Redux store (faster)
+    const state = store.getState();
+    token = state.auth?.token || null;
+
+    // 2️⃣ If not found, fall back to AsyncStorage
+    if (!token) {
+      token = await AsyncStorage.getItem("userToken");
     }
 
-    console.log("🚀 REQUEST DETAILS:", {
-      method: config.method?.toUpperCase(),
-      url: `${config.baseURL}${config.url}`,
-      fullURL: `${config.baseURL}${config.url}`,
-      headers: {
-        ...config.headers,
-        Authorization: config.headers.Authorization
-          ? "Bearer [TOKEN]"
-          : "NO AUTH",
-      },
-      data: config.data,
-    });
+    if (token) {
+      const headers =
+        (config.headers as AxiosRequestHeaders) || ({} as AxiosRequestHeaders);
+      headers.Authorization = `Bearer ${token}`;
+      config.headers = headers;
+    } else {
+      console.log("⚠️ No token found, request will be unauthenticated");
+    }
+
     return config;
   },
-  (error) => {
-    console.error("❌ REQUEST SETUP ERROR:", error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor

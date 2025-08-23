@@ -6,6 +6,9 @@ import {
   LoginResponse,
   RegisterResponse,
 } from "../../../shared/types/api";
+import { loginSuccess, logout } from "../store/authSlice";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { store } from "../../../store/store";
 
 class AuthService {
   /**
@@ -24,25 +27,27 @@ class AuthService {
         credentials
       );
 
-      console.log("✅ Login successful! Response:", {
-        success: response.data.success,
-        message: response.data.message,
-        userEmail: response.data.data.user.email,
-        userId: response.data.data.user.id,
-      });
+      const { user, token } = response.data.data;
+
+      if (!token) {
+        throw new Error("No token received from server");
+      }
+
+      console.log("✅ Login successful! Saving token:", token);
+
+      // 🔑 Save token to AsyncStorage
+      await AsyncStorage.setItem("userToken", token);
+
+      // 🔑 Save to Redux
+      store.dispatch(loginSuccess({ user, token }));
 
       return response.data.data;
     } catch (error: any) {
       console.log("❌ Login failed with error:", {
         status: error.response?.status,
-        statusText: error.response?.statusText,
         backendMessage: error.response?.data?.message,
-        backendError: error.response?.data?.error,
-        backendSuccess: error.response?.data?.success,
-        fullResponse: error.response?.data,
       });
 
-      // Extract error message from your backend's error format
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -87,6 +92,8 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       console.log("🔍 Logging out user");
+      await AsyncStorage.removeItem("userToken"); // clear from storage
+      store.dispatch(logout()); // clear redux
     } catch (error) {
       console.warn("Logout error:", error);
     }

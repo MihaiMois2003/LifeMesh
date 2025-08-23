@@ -44,7 +44,7 @@ export class LikeService {
         fullURL: `${apiClient.defaults.baseURL}/posts/${postId}/like`,
       });
 
-      const response = await apiClient.post(`/api/posts/${postId}/like`);
+      const response = await apiClient.post(`/api/posts/${postId}/like`, {});
 
       console.log("✅ Like toggled successfully:", response.data.data.action);
       return response.data;
@@ -111,7 +111,9 @@ export class LikeService {
     try {
       console.log("📱 Unliking post:", postId);
 
-      const response = await apiClient.delete(`/api/posts/${postId}/like`);
+      const response = await apiClient.delete(`/api/posts/${postId}/like`, {
+        data: {},
+      });
 
       console.log("✅ Post unliked successfully");
       return response.data;
