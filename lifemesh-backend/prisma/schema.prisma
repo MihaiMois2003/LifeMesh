@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,163 +8,121 @@ datasource db {
 }
 
 model User {
-  //role of the user
-  role        UserRole  @default(USER)
-
-  id          String   @id @default(uuid())
-  email       String   @unique
-  username    String   @unique
+  role        UserRole    @default(USER)
+  id          String      @id @default(uuid())
+  email       String      @unique
+  username    String      @unique
   displayName String?
-  bio         String?  @db.Text
+  bio         String?     @db.Text
   avatar      String?
-  
-  // Reputation system
-  reputation  Int      @default(0)
-  level       Int      @default(1)
-  
-  // Location
+  reputation  Int         @default(0)
+  level       Int         @default(1)
   latitude    Float?
   longitude   Float?
   address     String?
-  
-  // Auth
   password    String
-  isVerified  Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  
-  // Timestamps
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isVerified  Boolean     @default(false)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   lastLoginAt DateTime?
-  
-  // Relations
-  posts       Post[]
   comments    Comment[]
-  likes       Like[]      // 🆕 NEW: User can like many posts
+  likes       Like[]
+  posts       Post[]
   badges      UserBadge[]
-  
+
   @@map("users")
 }
 
 model Post {
-  id          String     @id @default(uuid())
-  title       String
-  content     String     @db.Text
-  
-  // Classification
-  category    Category   @default(GENERAL)
-  type        PostType   @default(TEXT)
-  status      PostStatus @default(ACTIVE)
-  
-  // Location
-  latitude    Float?
-  longitude   Float?
-  address     String?
-  radius      Int?       // For area-based posts (in meters)
-  
-  // Media
-  imageUrls   Json?      // Array of image URLs
-  
-  // Engagement - 🔄 CHANGED: Simple likes instead of upvotes/downvotes
-  likeCount   Int        @default(0)  // 🆕 NEW: Total likes count (cached for performance)
-  viewCount   Int        @default(0)
-  
-  // AI metadata
-  aiCategory  String?    // AI-suggested category
-  aiConfidence Float?    // AI confidence score
-  
-  // Timestamps
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  expiresAt   DateTime?  // For time-sensitive posts
-  
-  // Relations
-  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId    String
-  comments    Comment[]
-  likes       Like[]     // 🆕 NEW: Post can have many likes
-  
-  // Indexes for performance
+  id           String     @id @default(uuid())
+  title        String
+  content      String     @db.Text
+  category     Category   @default(GENERAL)
+  type         PostType   @default(TEXT)
+  status       PostStatus @default(ACTIVE)
+  latitude     Float?
+  longitude    Float?
+  address      String?
+  radius       Int?
+  imageUrls    Json?
+  likeCount    Int        @default(0)
+  viewCount    Int        @default(0)
+  aiCategory   String?
+  aiConfidence Float?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  expiresAt    DateTime?
+  authorId     String
+  comments     Comment[]
+  likes        Like[]
+  author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
   @@index([category, status, createdAt])
   @@index([latitude, longitude])
   @@index([authorId])
   @@map("posts")
 }
 
-// 🆕 NEW: Like model for simple like/unlike functionality
 model Like {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
-  
-  // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId    String
-  
-  // Prevent duplicate likes - one user can only like a post once
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, postId])
+  @@index([postId], map: "likes_postId_fkey")
   @@map("likes")
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  content   String   @db.Text
-  
-  // Engagement - 🔄 FUTURE: We'll convert these to likes later when we implement comment likes
-  upvotes   Int      @default(0)
-  downvotes Int      @default(0)
-  
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  content   String    @db.Text
+  upvotes   Int       @default(0)
+  downvotes Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   postId    String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId  String
-  
-  // Self-referencing for replies
-  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
   parentId  String?
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies   Comment[] @relation("CommentReplies")
-  
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@index([postId, createdAt])
+  @@index([authorId], map: "comments_authorId_fkey")
+  @@index([parentId], map: "comments_parentId_fkey")
   @@map("comments")
 }
 
 model Badge {
-  id          String @id @default(uuid())
-  name        String @unique
-  description String @db.Text
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String      @db.Text
   icon        String
   color       String
-  
-  // Requirements
-  requirement Json   // Flexible requirement system
-  
-  // Relations
+  requirement Json
   users       UserBadge[]
-  
+
   @@map("badges")
 }
 
 model UserBadge {
-  id        String   @id @default(uuid())
-  earnedAt  DateTime @default(now())
-  
-  // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-  badgeId   String
-  
+  id       String   @id @default(uuid())
+  earnedAt DateTime @default(now())
+  userId   String
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, badgeId])
+  @@index([badgeId], map: "user_badges_badgeId_fkey")
   @@map("user_badges")
 }
 
-// Enums
 enum Category {
   HELP_REQUEST
   DONATION
@@ -201,5 +156,3 @@ enum UserRole {
   USER
   ADMIN
 }
-
-// 🗑️ REMOVED: Vote model and VoteType enum (replaced with simple likes)

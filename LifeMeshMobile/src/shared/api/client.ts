@@ -7,9 +7,12 @@ import axios, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { store } from "../../store/store";
 
+let ifDevelopment = 1;
 // Create axios instance with base configuration
 export const apiClient = axios.create({
-  baseURL: "http://10.0.2.2:3000",
+  baseURL: ifDevelopment
+    ? "http://10.0.2.2:3000"
+    : "https://life-mesh-backend.vercel.app",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -41,7 +44,7 @@ apiClient.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor
@@ -68,5 +71,5 @@ apiClient.interceptors.response.use(
         : "No response received",
     });
     return Promise.reject(error);
-  }
+  },
 );

@@ -58,7 +58,7 @@ export const FeedScreen = () => {
     Category | undefined
   >(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  
+
   // Post Detail Modal State
   const [showPostDetailModal, setShowPostDetailModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -89,21 +89,28 @@ export const FeedScreen = () => {
   /**
    * Update a post's like status in the posts array
    */
-  const updatePostLikeStatus = useCallback((postId: string, likeStatus: LikeStatus) => {
-    updatePost(postId, {
-      likeCount: likeStatus.likeCount,
-      isLikedByCurrentUser: likeStatus.isLiked,
-    });
-
-    // Also update selected post if it's the same post
-    if (selectedPost && selectedPost.id === postId) {
-      setSelectedPost(prev => prev ? {
-        ...prev,
+  const updatePostLikeStatus = useCallback(
+    (postId: string, likeStatus: LikeStatus) => {
+      updatePost(postId, {
         likeCount: likeStatus.likeCount,
         isLikedByCurrentUser: likeStatus.isLiked,
-      } : null);
-    }
-  }, [updatePost, selectedPost]);
+      });
+
+      // Also update selected post if it's the same post
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost((prev) =>
+          prev
+            ? {
+                ...prev,
+                likeCount: likeStatus.likeCount,
+                isLikedByCurrentUser: likeStatus.isLiked,
+              }
+            : null
+        );
+      }
+    },
+    [updatePost, selectedPost]
+  );
 
   /**
    * Handle like press from PostCard
@@ -150,19 +157,19 @@ export const FeedScreen = () => {
    */
   const handleEditFromModal = () => {
     if (!selectedPost) return;
-    
+
     console.log("✏️ Edit post from modal:", selectedPost.id);
-    
+
     const isOwner = user?.id === selectedPost.authorId;
     const reason = isOwner ? "as owner" : "as admin";
-    
+
     // Close modal first
     handleClosePostDetail();
-    
+
     // Show edit functionality (future implementation)
     setTimeout(() => {
       Alert.alert(
-        "Edit Post", 
+        "Edit Post",
         `Edit functionality coming soon!\n\nYou can edit this post ${reason}.\n\nPost: "${selectedPost.title}"`,
         [{ text: "OK" }]
       );
@@ -174,10 +181,12 @@ export const FeedScreen = () => {
    */
   const handleDeleteFromModal = () => {
     if (!selectedPost) return;
-    
+
     const isOwner = user?.id === selectedPost.authorId;
-    const reason = isOwner ? "You are the author of this post." : "You have admin privileges.";
-    
+    const reason = isOwner
+      ? "You are the author of this post."
+      : "You have admin privileges.";
+
     Alert.alert(
       "Delete Post",
       `Are you sure you want to delete "${selectedPost.title}"?\n\n${reason}\n\nThis action cannot be undone.`,
@@ -188,15 +197,19 @@ export const FeedScreen = () => {
           style: "destructive",
           onPress: async () => {
             if (!selectedPost) return;
-            
-            console.log("🗑️ Deleting post from modal:", selectedPost.id, isOwner ? "(as owner)" : "(as admin)");
-            
+
+            console.log(
+              "🗑️ Deleting post from modal:",
+              selectedPost.id,
+              isOwner ? "(as owner)" : "(as admin)"
+            );
+
             // Close modal first
             handleClosePostDetail();
-            
+
             // Perform deletion
             const result = await deletePost(selectedPost.id);
-            
+
             if (result.success) {
               Alert.alert("Success", "Post deleted successfully");
             } else {
@@ -213,14 +226,14 @@ export const FeedScreen = () => {
    */
   const handleLikeFromModal = () => {
     if (!selectedPost) return;
-    
+
     console.log("❤️ Like post from modal:", selectedPost.id);
-    
+
     // Animate FAB even from modal
     fabScale.value = withSpring(0.9, { duration: 100 }, () => {
       fabScale.value = withSpring(1, { duration: 200 });
     });
-    
+
     // The actual like logic will be handled by the useLike hook in PostDetailActions
   };
 
@@ -229,9 +242,9 @@ export const FeedScreen = () => {
    */
   const handleCommentFromModal = () => {
     if (!selectedPost) return;
-    
+
     console.log("💬 Comment on post from modal:", selectedPost.id);
-    
+
     // TODO: Implement comment functionality
     Alert.alert("Coming Soon", "Comment functionality will be added soon!");
   };
@@ -241,9 +254,9 @@ export const FeedScreen = () => {
    */
   const handleShareFromModal = () => {
     if (!selectedPost) return;
-    
+
     console.log("📤 Share post from modal:", selectedPost.id);
-    
+
     // TODO: Implement share functionality
     Alert.alert("Coming Soon", "Share functionality will be added soon!");
   };
@@ -597,7 +610,7 @@ const styles = StyleSheet.create({
   fabContainer: {
     position: "absolute",
     right: Spacing.xl,
-    bottom: Spacing.xl + 80, // Above tab bar
+    bottom: Spacing.xl, // Above tab bar
   },
   fab: {
     width: 56,
